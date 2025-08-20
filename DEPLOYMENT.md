@@ -1,377 +1,160 @@
-# iOS SDK Deployment Guide
+# Deployment Guide
 
-## Prerequisites
+This guide explains how to publish the Limechat iOS SDK for public use.
 
-- Xcode 13.0 or later
-- Swift 5.7 or later
-- iOS deployment target 13.0 or later
-- Apple Developer Account (for App Store distribution)
-- CocoaPods or Swift Package Manager
+## Publishing to GitHub
 
-## Development Setup
+### 1. Prepare the Repository
 
-### 1. Clone the Repository
+1. **Ensure all files are committed:**
+   ```bash
+   git add .
+   git commit -m "Prepare for v1.0.0 release"
+   ```
 
-```bash
-git clone https://github.com/limechat/limechat-widget-sdks.git
-cd limechat-widget-sdks/limechat-ios-sdk
-```
+2. **Create a git tag for the version:**
+   ```bash
+   git tag -a v1.0.0 -m "Release version 1.0.0"
+   git push origin v1.0.0
+   ```
 
-### 2. Open in Xcode
-
-```bash
-open Package.swift
-```
-
-Or double-click the `Package.swift` file to open in Xcode.
-
-### 3. Build the Package
-
-In Xcode:
-1. Select Product → Build (⌘B)
-2. Ensure the build succeeds without errors
-
-### 4. Run Tests
-
-```bash
-swift test
-```
-
-Or in Xcode:
-1. Select Product → Test (⌘U)
-
-## Publishing the SDK
-
-### Option 1: Swift Package Manager (Recommended)
-
-#### Step 1: Tag Your Release
-
-```bash
-# Ensure all changes are committed
-git add .
-git commit -m "Release version 1.0.0"
-
-# Create a tag
-git tag 1.0.0
-git push origin main --tags
-```
-
-#### Step 2: Create GitHub Release
+### 2. Create GitHub Release
 
 1. Go to your GitHub repository
-2. Click on "Releases" → "Create a new release"
-3. Select your tag (1.0.0)
-4. Add release notes
-5. Publish release
+2. Click on "Releases" in the right sidebar
+3. Click "Create a new release"
+4. Select the tag you just created (`v1.0.0`)
+5. Add release title: `Limechat iOS SDK v1.0.0`
+6. Add release description with features and changes
+7. Upload any additional files if needed
+8. Click "Publish release"
 
-#### Step 3: Users Can Add via SPM
+### 3. Verify Swift Package Manager Integration
 
-Users add the package in Xcode:
-1. File → Add Packages
-2. Enter repository URL: `https://github.com/limechat/limechat-ios-sdk.git`
-3. Select version rules
+After publishing, users should be able to add your package in Xcode:
 
-Or in `Package.swift`:
-```swift
-dependencies: [
-    .package(url: "https://github.com/limechat/limechat-ios-sdk.git", from: "1.0.0")
-]
-```
+1. **In Xcode:**
+   - File → Add Package Dependencies
+   - Enter: `https://github.com/limechat/limechat-ios-sdk.git`
+   - Select version: `1.0.0`
 
-### Option 2: CocoaPods
+2. **Or in Package.swift:**
+   ```swift
+   dependencies: [
+       .package(url: "https://github.com/limechat/limechat-ios-sdk.git", from: "1.0.0")
+   ]
+   ```
 
-#### Step 1: Create Podspec
+## Publishing to CocoaPods (Optional)
 
-Create `LimechatWidget.podspec`:
+If you want to support CocoaPods as well:
+
+### 1. Create Podspec File
+
+Create `LimechatWidget.podspec` in the root directory:
 
 ```ruby
 Pod::Spec.new do |spec|
   spec.name         = "LimechatWidget"
   spec.version      = "1.0.0"
-  spec.summary      = "iOS SDK for Limechat Widget"
-  spec.description  = <<-DESC
-    Native iOS SDK for integrating Limechat customer support widget into your iOS applications.
-  DESC
+  spec.summary      = "Native iOS SDK for integrating Limechat customer support widget"
+  spec.description  = "A native Swift SDK that provides a full-screen modal presentation of the Limechat customer support widget in iOS applications."
   
   spec.homepage     = "https://github.com/limechat/limechat-ios-sdk"
   spec.license      = { :type => "MIT", :file => "LICENSE" }
   spec.author       = { "Limechat" => "support@limechat.ai" }
-  
   spec.platform     = :ios, "13.0"
+  spec.source       = { :git => "https://github.com/limechat/limechat-ios-sdk.git", :tag => "#{spec.version}" }
+  
+  spec.source_files = "Sources/LimechatWidget/**/*"
   spec.swift_version = "5.7"
-  
-  spec.source       = { 
-    :git => "https://github.com/limechat/limechat-ios-sdk.git", 
-    :tag => "#{spec.version}" 
-  }
-  
-  spec.source_files = "Sources/LimechatWidget/**/*.{swift,h,m}"
-  spec.frameworks   = "UIKit", "WebKit", "Foundation"
-  
-  spec.requires_arc = true
 end
 ```
 
-#### Step 2: Validate Podspec
+### 2. Validate and Publish
 
 ```bash
-pod lib lint LimechatWidget.podspec
-```
+# Validate the podspec
+pod spec lint LimechatWidget.podspec
 
-#### Step 3: Push to CocoaPods Trunk
-
-```bash
-# Register (first time only)
-pod trunk register your-email@example.com 'Your Name'
-
-# Push podspec
+# Push to CocoaPods trunk
 pod trunk push LimechatWidget.podspec
 ```
 
-### Option 3: XCFramework Distribution
+## Version Management
 
-#### Step 1: Build XCFramework
+### Semantic Versioning
 
-Create build script `build-xcframework.sh`:
+Follow [Semantic Versioning](https://semver.org/) for version numbers:
 
-```bash
-#!/bin/bash
+- **MAJOR.MINOR.PATCH** (e.g., 1.0.0)
+- **MAJOR**: Breaking changes
+- **MINOR**: New features, backward compatible
+- **PATCH**: Bug fixes, backward compatible
 
-# Clean previous builds
-rm -rf build
-mkdir build
+### Release Process
 
-# Build for iOS Simulator
-xcodebuild archive \
-  -scheme LimechatWidget \
-  -archivePath build/LimechatWidget-iphonesimulator.xcarchive \
-  -sdk iphonesimulator \
-  -configuration Release \
-  SKIP_INSTALL=NO \
-  BUILD_LIBRARY_FOR_DISTRIBUTION=YES
+1. **Update version numbers:**
+   - Update `CHANGELOG.md`
+   - Update version in `Package.swift` (if needed)
+   - Update version in `LimechatWidget.podspec` (if using CocoaPods)
 
-# Build for iOS Device
-xcodebuild archive \
-  -scheme LimechatWidget \
-  -archivePath build/LimechatWidget-iphoneos.xcarchive \
-  -sdk iphoneos \
-  -configuration Release \
-  SKIP_INSTALL=NO \
-  BUILD_LIBRARY_FOR_DISTRIBUTION=YES
+2. **Create git tag:**
+   ```bash
+   git tag -a v1.0.1 -m "Release version 1.0.1"
+   git push origin v1.0.1
+   ```
 
-# Create XCFramework
-xcodebuild -create-xcframework \
-  -framework build/LimechatWidget-iphonesimulator.xcarchive/Products/Library/Frameworks/LimechatWidget.framework \
-  -framework build/LimechatWidget-iphoneos.xcarchive/Products/Library/Frameworks/LimechatWidget.framework \
-  -output build/LimechatWidget.xcframework
+3. **Create GitHub release**
 
-echo "XCFramework created at build/LimechatWidget.xcframework"
-```
+## Testing Before Release
 
-#### Step 2: Run Build Script
+### 1. Local Testing
 
 ```bash
-chmod +x build-xcframework.sh
-./build-xcframework.sh
+# Test the package locally
+swift package test
+
+# Build the package
+swift build
 ```
 
-#### Step 3: Distribute
+### 2. Integration Testing
 
-1. Zip the XCFramework:
-```bash
-cd build
-zip -r LimechatWidget.xcframework.zip LimechatWidget.xcframework
-```
+1. Create a test iOS project
+2. Add your package as a dependency
+3. Test all major functionality
+4. Verify SwiftUI and UIKit integration
 
-2. Upload to your distribution channel (GitHub Release, CDN, etc.)
+### 3. Documentation Review
 
-3. Create `Package.swift` for binary distribution:
-```swift
-// swift-tools-version: 5.7
-import PackageDescription
+- [ ] README.md is up to date
+- [ ] Code examples work correctly
+- [ ] Installation instructions are clear
+- [ ] API documentation is complete
 
-let package = Package(
-    name: "LimechatWidget",
-    platforms: [.iOS(.v13)],
-    products: [
-        .library(
-            name: "LimechatWidget",
-            targets: ["LimechatWidget"]
-        ),
-    ],
-    targets: [
-        .binaryTarget(
-            name: "LimechatWidget",
-            url: "https://your-cdn.com/LimechatWidget.xcframework.zip",
-            checksum: "YOUR_CHECKSUM_HERE"
-        )
-    ]
-)
-```
+## Support and Maintenance
 
-## Versioning
+### After Release
 
-Follow [Semantic Versioning](https://semver.org/):
-- MAJOR version for incompatible API changes
-- MINOR version for backwards-compatible functionality
-- PATCH version for backwards-compatible bug fixes
+1. **Monitor issues** on GitHub
+2. **Respond to user questions** promptly
+3. **Plan future releases** based on feedback
+4. **Keep documentation updated**
 
-Example: `1.2.3`
+### Breaking Changes
 
-## CI/CD Setup
+If you need to make breaking changes:
 
-### GitHub Actions Workflow
+1. **Plan the migration** carefully
+2. **Document the changes** clearly
+3. **Provide migration guides**
+4. **Consider maintaining multiple versions** if needed
 
-Create `.github/workflows/release.yml`:
+## Security Considerations
 
-```yaml
-name: Release
-
-on:
-  push:
-    tags:
-      - '*'
-
-jobs:
-  build:
-    runs-on: macos-latest
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Select Xcode
-      run: sudo xcode-select -s /Applications/Xcode.app
-    
-    - name: Build Package
-      run: swift build -c release
-    
-    - name: Run Tests
-      run: swift test
-    
-    - name: Build XCFramework
-      run: |
-        chmod +x build-xcframework.sh
-        ./build-xcframework.sh
-    
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: build/LimechatWidget.xcframework.zip
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-```
-
-## Documentation
-
-### Generate Documentation
-
-Using [DocC](https://developer.apple.com/documentation/docc):
-
-1. In Xcode: Product → Build Documentation
-2. Export: Right-click on documentation → Export
-
-Or using [Jazzy](https://github.com/realm/jazzy):
-
-```bash
-gem install jazzy
-jazzy \
-  --module LimechatWidget \
-  --swift-version 5.7 \
-  --author Limechat \
-  --github_url https://github.com/limechat/limechat-ios-sdk \
-  --output docs
-```
-
-## Testing Distribution
-
-### Local Testing
-
-1. Create a test app
-2. Add local package dependency:
-   - File → Add Packages
-   - Click "Add Local..."
-   - Select the SDK directory
-
-### TestFlight Distribution
-
-For testing with beta users:
-
-1. Archive your sample app with the SDK
-2. Upload to App Store Connect
-3. Distribute via TestFlight
-
-## Monitoring
-
-### Analytics
-
-Add analytics to track SDK usage:
-
-```swift
-// In LimechatWidgetView.swift
-private func trackEvent(_ event: String, properties: [String: Any]? = nil) {
-    // Send to your analytics service
-    Analytics.track(event, properties: properties)
-}
-```
-
-### Crash Reporting
-
-Integrate crash reporting:
-
-```swift
-// Using Crashlytics example
-import FirebaseCrashlytics
-
-private func reportError(_ error: Error) {
-    Crashlytics.crashlytics().record(error: error)
-}
-```
-
-## Security
-
-### Code Signing
-
-1. Enable automatic code signing in Xcode
-2. Use proper provisioning profiles
-3. Sign XCFrameworks:
-
-```bash
-codesign --sign "Developer ID Application: Your Company" \
-         --timestamp \
-         build/LimechatWidget.xcframework
-```
-
-### App Transport Security
-
-Ensure your SDK respects ATS:
-
-```xml
-<!-- In Info.plist if needed -->
-<key>NSAppTransportSecurity</key>
-<dict>
-    <key>NSAllowsArbitraryLoadsInWebContent</key>
-    <true/>
-</dict>
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Module not found**
-   - Clean build folder: ⇧⌘K
-   - Reset package caches: File → Packages → Reset Package Caches
-
-2. **Signing issues**
-   - Check provisioning profiles
-   - Ensure developer certificate is valid
-
-3. **Archive validation fails**
-   - Check minimum deployment target
-   - Verify all architectures are included
-
-## Support
-
-- GitHub Issues: [limechat-ios-sdk/issues](https://github.com/limechat/limechat-ios-sdk/issues)
-- Email: support@limechat.ai
-- Documentation: [docs.limechat.ai](https://docs.limechat.ai)
+- Keep dependencies updated
+- Review code for security issues
+- Use HTTPS for all URLs
+- Validate user inputs
+- Follow iOS security best practices

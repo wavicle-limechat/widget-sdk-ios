@@ -1,0 +1,169 @@
+import SwiftUI
+import LimechatWidget
+
+struct ContentView: View {
+    @State private var showWidget = false
+    @State private var unreadCount = 0
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("Limechat Widget Demo")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .padding(.top)
+                
+                VStack(spacing: 15) {
+                    Text("Widget Icon Integration")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    Text("This demonstrates how the widget icon is automatically fetched from your configuration. The icon below represents what would be fetched from your widget config.")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("✅")
+                            Text("Icon fetched from widget configuration")
+                        }
+                        HStack {
+                            Text("✅")
+                            Text("Unread count updates automatically")
+                        }
+                        HStack {
+                            Text("✅")
+                            Text("Tap to open widget")
+                        }
+                    }
+                    .font(.body)
+                }
+                
+                Spacer()
+                
+                // Simulated widget icon (representing what would be fetched from config)
+                Button(action: {
+                    showWidget = true
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.blue)
+                            .frame(width: 60, height: 60)
+                            .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+                        
+                        Image(systemName: "message.fill")
+                            .font(.title2)
+                            .foregroundColor(.white)
+                        
+                        if unreadCount > 0 {
+                            VStack {
+                                HStack {
+                                    Spacer()
+                                    Circle()
+                                        .fill(Color.red)
+                                        .frame(width: 20, height: 20)
+                                        .overlay(
+                                            Text("\(min(unreadCount, 99))")
+                                                .font(.caption2)
+                                                .fontWeight(.bold)
+                                                .foregroundColor(.white)
+                                        )
+                                }
+                                Spacer()
+                            }
+                            .frame(width: 60, height: 60)
+                        }
+                    }
+                }
+                .padding()
+                
+                if unreadCount > 0 {
+                    HStack {
+                        Image(systemName: "bell.badge.fill")
+                            .foregroundColor(.red)
+                        Text("Unread messages: \(unreadCount)")
+                            .font(.body)
+                            .foregroundColor(.red)
+                    }
+                    .padding()
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(8)
+                }
+                
+                Spacer()
+            }
+            .navigationBarHidden(true)
+        }
+        .sheet(isPresented: $showWidget) {
+            WidgetViewWrapper(unreadCount: $unreadCount)
+                .edgesIgnoringSafeArea(.all)
+        }
+    }
+}
+
+struct WidgetViewWrapper: UIViewControllerRepresentable {
+    @Binding var unreadCount: Int
+    
+    func makeUIViewController(context: Context) -> LimechatWidgetViewController {
+        let user = WidgetConfiguration.User(
+            name: "John Doe",
+            email: "john.doe@example.com",
+            phoneNumber: "+1234567890"
+        )
+        
+        let config = WidgetConfiguration(
+            websiteToken: "MEFFACy4xaovJayhLjSt836h", // This fetches the widget icon
+            locale: "en",
+            colorScheme: .auto,
+            user: user,
+            customAttributes: ["source": "ios_app"]
+        )
+        
+        let widgetVC = LimechatWidgetViewController(configuration: config)
+        widgetVC.widgetDelegate = context.coordinator
+        return widgetVC
+    }
+    
+    func updateUIViewController(_ uiViewController: LimechatWidgetViewController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, LimechatWidgetDelegate {
+        var parent: WidgetViewWrapper
+        
+        init(_ parent: WidgetViewWrapper) {
+            self.parent = parent
+        }
+        
+        func widgetDidLoad() {
+            print("✅ Widget loaded successfully")
+        }
+        
+        func widgetDidRequestClose() {
+            print("✅ Widget closed by user")
+        }
+        
+        func widgetDidReceiveError(_ error: WidgetError) {
+            print("❌ Widget error: \(error.localizedDescription)")
+        }
+        
+        func widgetDidReceiveMessage(_ message: [String: Any]) {
+            print("📨 Widget message received: \(message)")
+        }
+        
+        func widgetDidReceiveUnreadCount(_ count: Int) {
+            DispatchQueue.main.async {
+                self.parent.unreadCount = count
+            }
+            print("🔢 Unread count: \(count)")
+        }
+    }
+}
+
+#Preview {
+    ContentView()
+}
