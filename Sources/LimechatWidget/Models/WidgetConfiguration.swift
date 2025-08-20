@@ -18,15 +18,6 @@ public struct WidgetConfiguration {
     /// Custom attributes to attach to the session
     public let customAttributes: [String: Any]?
     
-    /// Base URL for the widget (optional, uses production by default)
-    public let baseURL: String
-    
-    /// Enable debug logging
-    public let enableDebugLogs: Bool
-    
-    /// Timeout for network requests (in seconds)
-    public let requestTimeout: TimeInterval
-    
     /// Color scheme options
     public enum ColorScheme: String, CaseIterable {
         case light = "light"
@@ -52,21 +43,15 @@ public struct WidgetConfiguration {
         public let name: String?
         public let email: String?
         public let phoneNumber: String?
-        public let identifierHash: String?
-        public let avatarURL: String?
         
         public init(
             name: String? = nil,
             email: String? = nil,
-            phoneNumber: String? = nil,
-            identifierHash: String? = nil,
-            avatarURL: String? = nil
+            phoneNumber: String? = nil
         ) {
             self.name = name
             self.email = email
             self.phoneNumber = phoneNumber
-            self.identifierHash = identifierHash
-            self.avatarURL = avatarURL
         }
         
         var dictionary: [String: Any] {
@@ -74,8 +59,6 @@ public struct WidgetConfiguration {
             if let name = name { dict["name"] = name }
             if let email = email { dict["email"] = email }
             if let phoneNumber = phoneNumber { dict["phone_number"] = phoneNumber }
-            if let identifierHash = identifierHash { dict["identifier_hash"] = identifierHash }
-            if let avatarURL = avatarURL { dict["avatar_url"] = avatarURL }
             return dict
         }
     }
@@ -86,26 +69,20 @@ public struct WidgetConfiguration {
         locale: String = "en",
         colorScheme: ColorScheme = .auto,
         user: User? = nil,
-        customAttributes: [String: Any]? = nil,
-        baseURL: String = "https://app.limechat.ai",
-        enableDebugLogs: Bool = false,
-        requestTimeout: TimeInterval = 30.0
+        customAttributes: [String: Any]? = nil
     ) {
         self.websiteToken = websiteToken
         self.locale = locale
         self.colorScheme = colorScheme
         self.user = user
         self.customAttributes = customAttributes
-        self.baseURL = baseURL
-        self.enableDebugLogs = enableDebugLogs
-        self.requestTimeout = requestTimeout
     }
     
     /// Build the widget URL with parameters
     var widgetURL: URL? {
         guard !websiteToken.isEmpty else { return nil }
         
-        var components = URLComponents(string: baseURL)
+        var components = URLComponents(string: "https://app.limechat.ai")
         components?.path = "/widget"
         
         var queryItems = [
@@ -141,38 +118,5 @@ public struct WidgetConfiguration {
             return ColorScheme.system
         }
         return colorScheme
-    }
-    
-    /// Validate the configuration
-    func validate() throws {
-        guard !websiteToken.isEmpty else {
-            throw WidgetError.configurationError("Website token cannot be empty")
-        }
-        
-        guard !locale.isEmpty else {
-            throw WidgetError.configurationError("Locale cannot be empty")
-        }
-        
-        guard URL(string: baseURL) != nil else {
-            throw WidgetError.configurationError("Invalid base URL: \(baseURL)")
-        }
-        
-        if let user = user {
-            // Validate user email format if provided
-            if let email = user.email, !email.isEmpty {
-                let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
-                let emailPredicate = NSPredicate(format:"SELF MATCHES %@", emailRegex)
-                if !emailPredicate.evaluate(with: email) {
-                    throw WidgetError.configurationError("Invalid email format: \(email)")
-                }
-            }
-            
-            // Validate avatar URL if provided
-            if let avatarURL = user.avatarURL, !avatarURL.isEmpty {
-                guard URL(string: avatarURL) != nil else {
-                    throw WidgetError.configurationError("Invalid avatar URL: \(avatarURL)")
-                }
-            }
-        }
     }
 }
