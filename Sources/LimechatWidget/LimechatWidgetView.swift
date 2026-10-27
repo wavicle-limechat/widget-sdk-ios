@@ -97,9 +97,6 @@ public class LimechatWidgetView: UIView {
     private func setupWebView() {
         let webConfiguration = WKWebViewConfiguration()
         
-        // Enable JavaScript
-        webConfiguration.preferences.javaScriptEnabled = true
-        
         // Add message handler for communication
         let contentController = WKUserContentController()
         let handler = WeakScriptMessageHandler(target: self)
@@ -125,9 +122,7 @@ public class LimechatWidgetView: UIView {
         webView.backgroundColor = .clear
         
         // Handle safe area for modern devices
-        if #available(iOS 11.0, *) {
-            webView.scrollView.contentInsetAdjustmentBehavior = .never
-        }
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
         
         addSubview(webView)
         webView.translatesAutoresizingMaskIntoConstraints = false

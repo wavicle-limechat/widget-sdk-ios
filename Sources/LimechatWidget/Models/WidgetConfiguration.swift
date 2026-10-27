@@ -38,15 +38,12 @@ public struct WidgetConfiguration {
         
         /// Get system color scheme
         public static var system: ColorScheme {
-            if #available(iOS 13.0, *) {
-                switch UIScreen.main.traitCollection.userInterfaceStyle {
-                case .dark:
-                    return .dark
-                default:
-                    return .light
-                }
+            switch UIScreen.main.traitCollection.userInterfaceStyle {
+            case .dark:
+                return .dark
+            default:
+                return .light
             }
-            return .light
         }
     }
     

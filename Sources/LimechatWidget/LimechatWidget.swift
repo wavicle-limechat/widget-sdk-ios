@@ -21,11 +21,7 @@ public class LimechatWidget: UIView {
     public weak var delegate: LimechatWidgetDelegate?
     
     /// Style for the container (like React Native's style prop)
-    public var containerStyle: [String: Any] = [:] {
-        didSet {
-            applyContainerStyle()
-        }
-    }
+    public var containerStyle: [String: Any] = [:]
     
     /// Style for the default icon (like React Native's iconStyle prop)
     public var iconStyle: [String: Any] = [:] {
@@ -220,14 +216,8 @@ public class LimechatWidget: UIView {
     }
     
     private func applyStyles() {
-        applyContainerStyle()
         applyIconStyle()
         applyUnreadCountStyle()
-    }
-    
-    private func applyContainerStyle() {
-        // Apply container styles (like React Native's style prop)
-        // This can be extended to support more style properties
     }
     
     private func applyIconStyle() {
@@ -303,6 +293,5 @@ public struct LimechatWidgetSwiftUIView: UIViewRepresentable {
     }
     
     public func updateUIView(_ uiView: LimechatWidget, context: Context) {
-        // Update if needed
     }
 }

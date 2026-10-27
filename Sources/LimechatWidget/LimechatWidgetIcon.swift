@@ -24,26 +24,12 @@ public class LimechatWidgetIcon: UIView {
     }
     
     /// Icon size (default: 60x60)
-    public var iconSize: CGFloat = 60 {
-        didSet {
-            updateIconConstraints()
-        }
-    }
+    public var iconSize: CGFloat = 60
     
     /// Corner radius (default: 30)
     public var cornerRadius: CGFloat = 30 {
         didSet {
             layer.cornerRadius = cornerRadius
-        }
-    }
-    
-    /// Background color (default: system blue)
-    public override var backgroundColor: UIColor? {
-        get {
-            return super.backgroundColor
-        }
-        set {
-            super.backgroundColor = newValue
         }
     }
     
@@ -107,13 +93,7 @@ public class LimechatWidgetIcon: UIView {
         if let customIcon = customIcon {
             iconImageView.image = customIcon
         } else {
-            // Use default message icon
-            if #available(iOS 13.0, *) {
-                iconImageView.image = UIImage(systemName: "message.fill")
-            } else {
-                // Fallback for older iOS versions
-                iconImageView.image = UIImage(named: "message_icon")
-            }
+            iconImageView.image = UIImage(systemName: "message.fill")
         }
     }
     
@@ -144,11 +124,6 @@ public class LimechatWidgetIcon: UIView {
             unreadCountLabel?.removeFromSuperview()
             unreadCountLabel = nil
         }
-    }
-    
-    private func updateIconConstraints() {
-        // Update size constraints if needed
-        // This would be handled by the parent view controller
     }
     
     // MARK: - Public Methods
