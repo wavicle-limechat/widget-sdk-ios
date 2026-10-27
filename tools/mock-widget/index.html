@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>limechat mock widget</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+<script>
+  // mock only: remember anything injected before this script, then overwrite it
+  // like the real page does.
+  window.__preInjectedChannel = window.chatwootWebChannel;
+  // mirrors app/views/widgets/show.html.erb: plain reassignment, so anything an
+  // sdk set on window.chatwootWebChannel before page load is gone here.
+  window.chatwootWebChannel = {
+    locale: 'en',
+    websiteName: 'mock widget',
+    websiteToken: __WEBSITE_TOKEN__,
+    widgetColor: '#32cd32',
+    enabledFeatures: [],
+    preChatFormEnabled: false,
+    hideWidgetIcon: false
+  }
+  window.authToken = __AUTH_TOKEN__
+</script>
+<style>
+  body { font: 14px -apple-system, Roboto, sans-serif; margin: 12px; }
+  button, a.btn, label.btn { display: block; width: 100%; margin: 6px 0; padding: 10px; font-size: 14px; text-align: center; box-sizing: border-box; border: 1px solid #999; border-radius: 6px; background: #f4f4f4; color: #000; text-decoration: none; }
+  #log { font: 11px ui-monospace, monospace; white-space: pre-wrap; word-break: break-all; background: #111; color: #9f9; padding: 8px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<h3>limechat mock widget</h3>
+<button onclick="closeWidget()">close-widget</button>
+<button onclick="sendToken()">send set-cw-conversation (new token)</button>
+<a class="btn" href="https://example.com/?from=mock" onclick="log('action', {link: 'external'})">external link (same tab)</a>
+<a class="btn" href="https://example.com/?from=mock-blank" target="_blank" onclick="log('action', {link: 'target_blank'})">external link target=_blank</a>
+<button onclick="log('action', {link: 'window.open'}); log('result', {window_open: String(window.open('https://example.com/?from=mock-open'))})">window.open external</button>
+<a class="btn" id="samehost" href="#" onclick="log('action', {link: 'same_host', href: this.href})">same-host link (reloads mock)</a>
+<a class="btn" href="limechat://close" onclick="log('action', {link: 'limechat://close'})">limechat://close link</a>
+<label class="btn">file input (image/*, pdf, multiple)
+  <input id="file" type="file" accept="image/*,application/pdf" multiple style="display:block;margin:6px auto 0">
+</label>
+<button onclick="micProbe()">mic probe (getUserMedia)</button>
+<button onclick="log('rnUser', readRnUser())">read rnUser</button>
+<div id="log"></div>
+<script>
+  var t0 = Date.now();
+  function log(kind, detail) {
+    var line = '+' + (Date.now() - t0) + 'ms ' + kind + ' ' + JSON.stringify(detail);
+    document.getElementById('log').textContent += line + '\n';
+    try {
+      fetch('/log', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: kind, detail: detail }) });
+    } catch (_) {}
+  }
+
+  // ---- copied from lime-ui/widget/helpers/deviceHelper.js ----
+  var WEBVIEW_TYPES = { REACT_NATIVE: 'react-native', IOS: 'ios', IOS_STANDALONE: 'ios-standalone',
+    IOS_INAPP: 'ios-inapp', ANDROID: 'android', ANDROID_WEBVIEW: 'android-webview', PWA: 'pwa' };
+  var ANDROID_INTERFACES = ['LimechatAndroid', 'LimechatAndroid', 'LimeChatAndroid'];
+  function isWebView() {
+    if (window.ReactNativeWebView) return WEBVIEW_TYPES.REACT_NATIVE;
+    if (window.webkit && window.webkit.messageHandlers) return WEBVIEW_TYPES.IOS;
+    if (window.navigator.standalone === true) return WEBVIEW_TYPES.IOS_STANDALONE;
+    if (ANDROID_INTERFACES.some(function (n) { return !!window[n]; })) return WEBVIEW_TYPES.ANDROID;
+    var ua = navigator.userAgent.toLowerCase();
+    var isPwa = window.matchMedia('(display-mode: standalone)').matches;
+    var isAndroidWebView = ua.includes('; wv)') || (ua.includes('version/') && ua.includes('mobile safari'));
+    if (isAndroidWebView && !isPwa) return WEBVIEW_TYPES.ANDROID_WEBVIEW;
+    if (ua.includes('iphone') || ua.includes('ipad')) {
+      if (ua.includes('fban') || ua.includes('fbav') || ua.includes('instagram') || ua.includes('twitter')) return WEBVIEW_TYPES.IOS_INAPP;
+    }
+    if (isPwa) return WEBVIEW_TYPES.PWA;
+    return false;
+  }
+
+  // ---- copied from lime-ui/widget/helpers/webViewHelper.js (returns route used) ----
+  function sendToReactNative(m) {
+    if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+      try { window.ReactNativeWebView.postMessage(JSON.stringify(m)); return 'ReactNativeWebView.postMessage'; } catch (_) {}
+    }
+    return null;
+  }
+  function sendToIOS(m) {
+    try {
+      var h = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.limechat;
+      if (h && typeof h.postMessage === 'function') { h.postMessage(m); return 'webkit.messageHandlers.limechat'; }
+    } catch (_) {}
+    return null;
+  }
+  function sendToAndroid(m) {
+    try {
+      for (var i = 0; i < ANDROID_INTERFACES.length; i++) {
+        var iface = window[ANDROID_INTERFACES[i]];
+        if (iface && typeof iface.postMessage === 'function') { iface.postMessage(JSON.stringify(m)); return ANDROID_INTERFACES[i] + '.postMessage'; }
+      }
+    } catch (_) {}
+    try {
+      if (typeof window.postMessage === 'function') { window.postMessage('limechat-widget:' + JSON.stringify(m), '*'); return 'window.postMessage(limechat-widget:)'; }
+    } catch (_) {}
+    return null;
+  }
+  function sendMessage(event, data) {
+    var type = isWebView();
+    var message = Object.assign({ event: event, type: event, timestamp: Date.now() }, data || {});
+    var route = null;
+    if (!type || type === true) {
+      route = null; // real page: not in a webview -> sends nothing
+    } else if (type === WEBVIEW_TYPES.REACT_NATIVE) route = sendToReactNative(message);
+    else if (type === WEBVIEW_TYPES.IOS) route = sendToIOS(message);
+    else if (type === WEBVIEW_TYPES.ANDROID || type === WEBVIEW_TYPES.ANDROID_WEBVIEW) route = sendToAndroid(message);
+    log('emit', { platform: type, route: route, ok: !!route, message: message });
+  }
+  // ---- end copied ----
+
+  var tokenN = 0;
+  function sendToken(token) {
+    token = token || 'mock-new-' + (++tokenN);
+    sendMessage('set-cw-conversation', { cw_conversation: token });
+  }
+  function closeWidget() { log('action', { button: 'close-widget' }); sendMessage('close-widget'); }
+
+  function readRnUser() {
+    var c = window.chatwootWebChannel;
+    return { has_channel: !!c, rnUser: c ? (c.rnUser === undefined ? '<undefined>' : c.rnUser) : '<no channel>' };
+  }
+
+  function micProbe() {
+    log('action', { button: 'mic' });
+    var md = navigator.mediaDevices;
+    if (!md || !md.getUserMedia) return log('mic', { result: 'no navigator.mediaDevices (insecure context?)', secure: window.isSecureContext });
+    md.getUserMedia({ audio: true }).then(function (s) {
+      log('mic', { result: 'granted', tracks: s.getAudioTracks().length });
+      s.getTracks().forEach(function (t) { t.stop(); });
+    }, function (e) { log('mic', { result: 'error', name: e.name, message: e.message }); });
+  }
+
+  // inbound messages: the real page only acts on 'chatwoot-widget:' strings (IFrameHelper.isAValidEvent)
+  function onInbound(target) {
+    return function (e) {
+      var d = e.data, isStr = typeof d === 'string';
+      log('inbound', { target: target, origin: e.origin, data: d,
+        real_page_accepts: isStr && d.indexOf('chatwoot-widget:') === 0,
+        own_fallback_echo: isStr && d.indexOf('limechat-widget:') === 0 });
+    };
+  }
+  window.addEventListener('message', onInbound('window'));
+  document.addEventListener('message', onInbound('document'));
+
+  document.getElementById('file').addEventListener('change', function (e) {
+    var files = Array.prototype.map.call(e.target.files, function (f) { return { name: f.name, type: f.type, size: f.size }; });
+    log('file', { result: 'change', count: files.length, files: files });
+  });
+  document.getElementById('file').addEventListener('cancel', function () { log('file', { result: 'cancel' }); });
+  document.getElementById('file').addEventListener('click', function () { log('action', { button: 'file input' }); });
+
+  window.addEventListener('load', function () {
+    var params = {};
+    new URLSearchParams(location.search).forEach(function (v, k) { params[k] = v; });
+    var samehost = document.getElementById('samehost');
+    samehost.href = location.pathname + location.search;
+    log('load', { path: location.pathname, params: params, userAgent: navigator.userAgent });
+    log('platform', {
+      detected: isWebView(),
+      ReactNativeWebView: !!window.ReactNativeWebView,
+      webkit_messageHandlers: !!(window.webkit && window.webkit.messageHandlers),
+      ios_handler_limechat: !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.limechat),
+      ios_handler_limechatNative: !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.limechatNative),
+      LimechatAndroid: !!window.LimechatAndroid,
+      LimeChatAndroid: !!window.LimeChatAndroid
+    });
+    log('pre_injected_channel', { before_inline_script: window.__preInjectedChannel === undefined ? '<undefined>' : window.__preInjectedChannel });
+    // like App.vue mounted(): send the conversation token right away
+    sendMessage('set-cw-conversation', { cw_conversation: window.authToken });
+    // sdks inject after load, so poll for rnUser for a few seconds
+    var tries = 0, timer = setInterval(function () {
+      var r = readRnUser();
+      if (r.rnUser !== '<undefined>' || ++tries >= 20) {
+        clearInterval(timer);
+        r.after_ms = tries * 250;
+        log('rnUser', r);
+      }
+    }, 250);
+  });
+</script>
+</body>
+</html>
