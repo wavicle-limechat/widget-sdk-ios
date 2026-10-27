@@ -1,7 +1,7 @@
 import UIKit
 import SwiftUI
 
-/// Main Limechat Widget component - iOS equivalent of React Native's LimeChatWidget
+/// Main Limechat Widget component
 /// Handles both custom button and default icon rendering patterns
 public class LimechatWidget: UIView {
     
@@ -10,7 +10,7 @@ public class LimechatWidget: UIView {
     /// Widget configuration
     public let configuration: WidgetConfiguration
     
-    /// Optional custom button view (like React Native's customButton prop)
+    /// Optional custom button view
     public var customButton: UIView? {
         didSet {
             setupWidget()
@@ -20,17 +20,17 @@ public class LimechatWidget: UIView {
     /// Widget delegate for callbacks
     public weak var delegate: LimechatWidgetDelegate?
     
-    /// Style for the container (like React Native's style prop)
+    /// Style for the container
     public var containerStyle: [String: Any] = [:]
     
-    /// Style for the default icon (like React Native's iconStyle prop)
+    /// Style for the default icon
     public var iconStyle: [String: Any] = [:] {
         didSet {
             applyIconStyle()
         }
     }
     
-    /// Style for unread count badge (like React Native's unreadCountStyle prop)
+    /// Style for unread count badge
     public var unreadCountStyle: [String: Any] = [:] {
         didSet {
             applyUnreadCountStyle()
@@ -53,7 +53,7 @@ public class LimechatWidget: UIView {
     /// Initialize with configuration (required)
     /// - Parameters:
     ///   - configuration: Widget configuration with website token
-    ///   - customButton: Optional custom button (like React Native's customButton prop)
+    ///   - customButton: Optional custom button
     ///   - delegate: Widget delegate for callbacks
     public init(
         configuration: WidgetConfiguration,
@@ -75,7 +75,6 @@ public class LimechatWidget: UIView {
     // MARK: - Setup
     
     private func setupWidget() {
-        // Clear existing views
         subviews.forEach { $0.removeFromSuperview() }
         widgetIcon = nil
         customButtonContainer = nil
@@ -92,29 +91,24 @@ public class LimechatWidget: UIView {
     }
     
     private func setupCustomButton(_ button: UIView) {
-        // Like React Native: if customButton is provided, render it with onPress handling
         customButtonContainer = UIView()
         guard let container = customButtonContainer else { return }
         
         addSubview(container)
         container.addSubview(button)
         
-        // Add tap gesture to custom button container
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleButtonPress))
         container.addGestureRecognizer(tapGesture)
         
-        // Setup constraints
         container.translatesAutoresizingMaskIntoConstraints = false
         button.translatesAutoresizingMaskIntoConstraints = false
         
         NSLayoutConstraint.activate([
-            // Container fills this view
             container.topAnchor.constraint(equalTo: topAnchor),
             container.leadingAnchor.constraint(equalTo: leadingAnchor),
             container.trailingAnchor.constraint(equalTo: trailingAnchor),
             container.bottomAnchor.constraint(equalTo: bottomAnchor),
             
-            // Button fills container
             button.topAnchor.constraint(equalTo: container.topAnchor),
             button.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             button.trailingAnchor.constraint(equalTo: container.trailingAnchor),
@@ -123,7 +117,6 @@ public class LimechatWidget: UIView {
     }
     
     private func setupDefaultIcon() {
-        // Like React Native: if no customButton, render default WidgetIcon from config
         widgetIcon = LimechatWidgetIcon()
         guard let icon = widgetIcon else { return }
         
@@ -142,7 +135,6 @@ public class LimechatWidget: UIView {
     }
     
     private func setupUnreadCountBadge() {
-        // Create unread count badge (like React Native's unread count display)
         unreadCountBadge = UIView()
         guard let badge = unreadCountBadge else { return }
         
@@ -163,13 +155,11 @@ public class LimechatWidget: UIView {
         countLabel.translatesAutoresizingMaskIntoConstraints = false
         
         NSLayoutConstraint.activate([
-            // Badge in top-right corner
             badge.topAnchor.constraint(equalTo: topAnchor, constant: -5),
             badge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: 5),
             badge.widthAnchor.constraint(greaterThanOrEqualToConstant: 20),
             badge.heightAnchor.constraint(equalToConstant: 20),
             
-            // Label fills badge
             countLabel.centerXAnchor.constraint(equalTo: badge.centerXAnchor),
             countLabel.centerYAnchor.constraint(equalTo: badge.centerYAnchor),
             countLabel.leadingAnchor.constraint(greaterThanOrEqualTo: badge.leadingAnchor, constant: 4),
@@ -180,12 +170,10 @@ public class LimechatWidget: UIView {
     // MARK: - Actions
     
     @objc private func handleButtonPress() {
-        // Like React Native: handle both custom button onPress and widget toggle
         openWidget()
     }
     
     private func openWidget() {
-        // Find the view controller and present widget
         guard let viewController = findViewController() else { return }
         
         let widgetVC = LimechatWidgetViewController(configuration: configuration)
@@ -196,7 +184,7 @@ public class LimechatWidget: UIView {
     
     // MARK: - Public Methods
     
-    /// Update unread count (like React Native's automatic unread count update)
+    /// Update unread count
     public func setUnreadCount(_ count: Int) {
         unreadCount = count
     }
@@ -221,7 +209,6 @@ public class LimechatWidget: UIView {
     }
     
     private func applyIconStyle() {
-        // Apply icon styles (like React Native's iconStyle prop)
         guard let icon = widgetIcon else { return }
         
         if let size = iconStyle["size"] as? CGFloat {
@@ -239,7 +226,6 @@ public class LimechatWidget: UIView {
     }
     
     private func applyUnreadCountStyle() {
-        // Apply unread count styles (like React Native's unreadCountStyle prop)
         guard let badge = unreadCountBadge else { return }
         
         if let backgroundColor = unreadCountStyle["backgroundColor"] as? UIColor {
@@ -267,7 +253,7 @@ private extension UIView {
 
 // MARK: - SwiftUI Wrapper
 
-/// SwiftUI wrapper for LimechatWidget (like React Native component usage)
+/// SwiftUI wrapper for LimechatWidget
 public struct LimechatWidgetSwiftUIView: UIViewRepresentable {
     
     public let configuration: WidgetConfiguration

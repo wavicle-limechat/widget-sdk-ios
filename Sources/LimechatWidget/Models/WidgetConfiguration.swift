@@ -115,14 +115,12 @@ public struct WidgetConfiguration {
             URLQueryItem(name: "sdk_version", value: "1.0.0")
         ]
         
-        // Add user parameters
         if let user = user {
             for (key, value) in user.dictionary {
                 queryItems.append(URLQueryItem(name: key, value: "\(value)"))
             }
         }
         
-        // Add custom attributes as JSON
         if let customAttributes = customAttributes,
            !customAttributes.isEmpty,
            let jsonData = try? JSONSerialization.data(withJSONObject: customAttributes),
@@ -130,7 +128,6 @@ public struct WidgetConfiguration {
             queryItems.append(URLQueryItem(name: "custom_attributes", value: jsonString))
         }
         
-        // Conversation token
         if let token = cwConversation ?? conversationToken,
            !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             queryItems.append(URLQueryItem(name: "cw_conversation", value: token))

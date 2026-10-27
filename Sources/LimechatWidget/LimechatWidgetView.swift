@@ -97,7 +97,6 @@ public class LimechatWidgetView: UIView {
     private func setupWebView() {
         let webConfiguration = WKWebViewConfiguration()
         
-        // Add message handler for communication
         let contentController = WKUserContentController()
         let handler = WeakScriptMessageHandler(target: self)
         for name in LimechatWidgetView.messageHandlerNames {
@@ -105,23 +104,19 @@ public class LimechatWidgetView: UIView {
         }
         webConfiguration.userContentController = contentController
         
-        // Configure for inline media playback
         webConfiguration.allowsInlineMediaPlayback = true
         webConfiguration.mediaTypesRequiringUserActionForPlayback = []
         
-        // Create WebView
         webView = WKWebView(frame: bounds, configuration: webConfiguration)
         webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         webView.navigationDelegate = self
         webView.uiDelegate = self
         
-        // Configure WebView settings
         webView.scrollView.isScrollEnabled = true
         webView.scrollView.bounces = false
         webView.isOpaque = false
         webView.backgroundColor = .clear
         
-        // Handle safe area for modern devices
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         
         addSubview(webView)
@@ -273,14 +268,12 @@ extension LimechatWidgetView: WKNavigationDelegate {
             return
         }
         
-        // Handle special URLs
         if url.scheme == "limechat" && url.host == "close" {
             delegate?.widgetDidRequestClose()
             decisionHandler(.cancel)
             return
         }
         
-        // Only allow loading widget URLs
         if isWidgetHostURL(url) {
             decisionHandler(.allow)
         } else {
@@ -314,7 +307,6 @@ extension LimechatWidgetView: WKScriptMessageHandler {
             return
         }
         
-        // Handle different message types (event name like android: event ?: type)
         if let event = (body["event"] as? String) ?? (body["type"] as? String) {
             switch event {
             case "close", "close-widget":

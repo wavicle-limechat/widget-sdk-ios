@@ -59,7 +59,6 @@ public class LimechatWidgetIcon: UIView {
     // MARK: - Setup
     
     private func setupViews() {
-        // Configure container view
         backgroundColor = .systemBlue
         layer.cornerRadius = cornerRadius
         layer.shadowColor = UIColor.black.cgColor
@@ -67,11 +66,9 @@ public class LimechatWidgetIcon: UIView {
         layer.shadowRadius = 4
         layer.shadowOpacity = 0.2
         
-        // Add tap gesture
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(iconTapped))
         addGestureRecognizer(tapGesture)
         
-        // Setup icon image view
         iconImageView = UIImageView()
         iconImageView.contentMode = .scaleAspectFit
         iconImageView.tintColor = .white
@@ -85,7 +82,6 @@ public class LimechatWidgetIcon: UIView {
             iconImageView.heightAnchor.constraint(equalTo: heightAnchor, multiplier: 0.6)
         ])
         
-        // Set default icon
         updateIcon()
     }
     
@@ -145,13 +141,11 @@ public class LimechatWidgetIcon: UIView {
             return
         }
         
-        // Find the view controller to present from
         guard let viewController = findViewController() else {
             delegate?.widgetDidReceiveError(WidgetError.configurationError("Cannot find view controller"))
             return
         }
         
-        // Present the widget
         LimechatWidgetViewController.present(
             from: viewController,
             configuration: configuration,
