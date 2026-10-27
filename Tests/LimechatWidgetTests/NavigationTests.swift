@@ -59,7 +59,20 @@ final class NavigationTests: XCTestCase {
     func testPinsCurrentBehaviour_httpAndOtherSubdomainsAreCancelled() {
         XCTAssertEqual(decide(view, url: URL(string: "http://app.limechat.ai/widget")), .cancel)
         XCTAssertEqual(decide(view, url: URL(string: "https://staging.limechat.ai/widget")), .cancel)
-        XCTAssertEqual(decide(view, url: URL(string: "HTTPS://APP.LIMECHAT.AI/widget")), .cancel)
+    }
+
+    func testSchemeAndHostMatchIsCaseInsensitive() {
+        XCTAssertEqual(decide(view, url: URL(string: "HTTPS://APP.LIMECHAT.AI/widget")), .allow)
+        XCTAssertEqual(decide(view, url: URL(string: "https://App.LimeChat.ai:443/widget")), .allow)
+        XCTAssertEqual(spy.calls, [])
+    }
+
+    func testMixedCaseCustomBaseURLMatchesCaseInsensitively() {
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", baseURL: "HTTP://LocalHost:8787"))
+        XCTAssertEqual(decide(view, url: URL(string: "http://localhost:8787/widget")), .allow)
+        XCTAssertEqual(decide(view, url: URL(string: "HTTP://LOCALHOST:8787/widget")), .allow)
+        XCTAssertEqual(decide(view, url: URL(string: "http://localhost:8788/widget")), .cancel)
+        XCTAssertEqual(decide(view, url: URL(string: "https://localhost:8787/widget")), .cancel)
     }
 
     func testCustomBaseURLWidgetLoadIsAllowed() {

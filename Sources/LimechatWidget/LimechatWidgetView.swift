@@ -234,11 +234,12 @@ public class LimechatWidgetView: UIView {
         return dict
     }
     
-    /// Scheme + host + port must equal the configured baseURL (default ports normalised).
+    /// Scheme + host + port must equal the configured baseURL (scheme/host case-insensitive, default ports normalised).
     func isWidgetHostURL(_ url: URL) -> Bool {
         guard let base = URL(string: configuration?.baseURL ?? "https://app.limechat.ai"),
               let scheme = base.scheme, let host = base.host,
-              url.scheme == scheme, url.host == host else {
+              url.scheme?.lowercased() == scheme.lowercased(),
+              url.host?.lowercased() == host.lowercased() else {
             return false
         }
         return LimechatWidgetView.port(of: url) == LimechatWidgetView.port(of: base)
