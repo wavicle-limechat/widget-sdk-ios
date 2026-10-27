@@ -8,6 +8,48 @@ public protocol LimechatWidgetDelegate: AnyObject {
     func widgetDidReceiveError(_ error: WidgetError)
     func widgetDidReceiveMessage(_ message: [String: Any])
     func widgetDidReceiveUnreadCount(_ count: Int)
+    /// Called when the widget reports a new conversation token (`set-cw-conversation`).
+    /// Same as android `WidgetCallback.onConversationTokenChange`.
+    func widgetDidChangeConversationToken(_ token: String)
+}
+
+public extension LimechatWidgetDelegate {
+    func widgetDidChangeConversationToken(_ token: String) {}
+}
+
+/// Persists conversation tokens like the android sdk: storage `limechat_widget_conversations`,
+/// key = `instanceId` (or `"default"`), shared in-memory cache in front.
+enum ConversationTokenStore {
+    static let storageName = "limechat_widget_conversations"
+    static let defaultInstanceId = "default"
+    static var defaults: UserDefaults = UserDefaults(suiteName: storageName) ?? .standard
+    static var memoryCache: [String: String] = [:]
+
+    static func load(instanceId: String) -> String? {
+        if let token = memoryCache[instanceId] { return token }
+        let token = defaults.string(forKey: instanceId)
+        if let token = token { memoryCache[instanceId] = token }
+        return token
+    }
+
+    static func save(_ token: String, instanceId: String) {
+        memoryCache[instanceId] = token
+        defaults.set(token, forKey: instanceId)
+    }
+}
+
+/// Forwards script messages to a weakly held handler so the content controller
+/// does not retain the widget view (it would otherwise leak with its webview).
+final class WeakScriptMessageHandler: NSObject, WKScriptMessageHandler {
+    weak var target: WKScriptMessageHandler?
+
+    init(target: WKScriptMessageHandler) {
+        self.target = target
+    }
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        target?.userContentController(userContentController, didReceive: message)
+    }
 }
 
 /// Main widget view that renders the Limechat widget in a WebView
@@ -17,6 +59,12 @@ public class LimechatWidgetView: UIView {
     
     private var webView: WKWebView!
     private var configuration: WidgetConfiguration?
+    private var instanceId = ConversationTokenStore.defaultInstanceId
+    private var cwConversation: String?
+    
+    /// Script message handler names. the web posts to `limechat`; `limechatNative` is kept.
+    static let messageHandlerNames = ["limechat", "limechatNative"]
+    static let messagePrefix = "limechat-widget:"
     
     public weak var delegate: LimechatWidgetDelegate?
     
@@ -30,6 +78,13 @@ public class LimechatWidgetView: UIView {
     public required init?(coder: NSCoder) {
         super.init(coder: coder)
         setupViews()
+    }
+    
+    deinit {
+        let contentController = webView?.configuration.userContentController
+        for name in LimechatWidgetView.messageHandlerNames {
+            contentController?.removeScriptMessageHandler(forName: name)
+        }
     }
     
     // MARK: - Setup
@@ -47,7 +102,10 @@ public class LimechatWidgetView: UIView {
         
         // Add message handler for communication
         let contentController = WKUserContentController()
-        contentController.add(self, name: "limechatNative")
+        let handler = WeakScriptMessageHandler(target: self)
+        for name in LimechatWidgetView.messageHandlerNames {
+            contentController.add(handler, name: name)
+        }
         webConfiguration.userContentController = contentController
         
         // Configure for inline media playback
@@ -86,6 +144,19 @@ public class LimechatWidgetView: UIView {
     /// Initialize the widget with configuration
     public func initialize(with configuration: WidgetConfiguration) {
         self.configuration = configuration
+        
+        // same as android: instanceId or "default"; external token wins over the stored one
+        if let id = configuration.instanceId, !id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            instanceId = id
+        } else {
+            instanceId = ConversationTokenStore.defaultInstanceId
+        }
+        if let token = configuration.conversationToken {
+            cwConversation = token
+        } else {
+            cwConversation = ConversationTokenStore.load(instanceId: instanceId)
+        }
+        
         loadWidget()
     }
     
@@ -119,7 +190,7 @@ public class LimechatWidgetView: UIView {
     
     private func loadWidget() {
         guard let configuration = configuration,
-              let url = configuration.widgetURL else {
+              let url = configuration.widgetURL(cwConversation: cwConversation) else {
             let error = WidgetError.configurationError("Invalid configuration or URL")
             delegate?.widgetDidReceiveError(error)
             return
@@ -127,6 +198,59 @@ public class LimechatWidgetView: UIView {
         
         let request = URLRequest(url: url)
         webView.load(request)
+    }
+    
+    private func handleConversationTokenUpdate(_ token: String?) {
+        guard let token = token, !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
+        
+        if let onConversationTokenChange = configuration?.onConversationTokenChange {
+            // external token management: the host persists the token
+            onConversationTokenChange(token)
+        } else {
+            // internal token management: persist under instanceId
+            cwConversation = token
+            ConversationTokenStore.save(token, instanceId: instanceId)
+        }
+        
+        delegate?.widgetDidChangeConversationToken(token)
+    }
+    
+    /// Same as android `MessageHandler`: a dictionary, or a json object string with an optional `limechat-widget:` prefix.
+    static func parseMessageBody(_ body: Any) -> [String: Any]? {
+        if let dict = body as? [String: Any] {
+            return dict
+        }
+        guard var string = body as? String else { return nil }
+        if string.hasPrefix(messagePrefix) {
+            string.removeFirst(messagePrefix.count)
+        }
+        guard let data = string.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data),
+              let dict = json as? [String: Any] else {
+            return nil
+        }
+        return dict
+    }
+    
+    /// Scheme + host + port must equal the configured baseURL (default ports normalised).
+    func isWidgetHostURL(_ url: URL) -> Bool {
+        guard let base = URL(string: configuration?.baseURL ?? "https://app.limechat.ai"),
+              let scheme = base.scheme, let host = base.host,
+              url.scheme == scheme, url.host == host else {
+            return false
+        }
+        return LimechatWidgetView.port(of: url) == LimechatWidgetView.port(of: base)
+    }
+    
+    private static func port(of url: URL) -> Int? {
+        if let port = url.port { return port }
+        switch url.scheme?.lowercased() {
+        case "https": return 443
+        case "http": return 80
+        default: return nil
+        }
     }
 }
 
@@ -161,7 +285,7 @@ extension LimechatWidgetView: WKNavigationDelegate {
         }
         
         // Only allow loading widget URLs
-        if url.absoluteString.hasPrefix("https://app.limechat.ai") {
+        if isWidgetHostURL(url) {
             decisionHandler(.allow)
         } else {
             // Allow external links to open in Safari
@@ -189,16 +313,18 @@ extension LimechatWidgetView: WKUIDelegate {
 
 extension LimechatWidgetView: WKScriptMessageHandler {
     public func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard message.name == "limechatNative",
-              let body = message.body as? [String: Any] else {
+        guard LimechatWidgetView.messageHandlerNames.contains(message.name),
+              let body = LimechatWidgetView.parseMessageBody(message.body) else {
             return
         }
         
-        // Handle different message types
-        if let event = body["event"] as? String {
+        // Handle different message types (event name like android: event ?: type)
+        if let event = (body["event"] as? String) ?? (body["type"] as? String) {
             switch event {
-            case "close":
+            case "close", "close-widget":
                 delegate?.widgetDidRequestClose()
+            case "set-cw-conversation":
+                handleConversationTokenUpdate(body["cw_conversation"] as? String)
             case "unread_count":
                 if let count = body["count"] as? Int {
                     delegate?.widgetDidReceiveUnreadCount(count)

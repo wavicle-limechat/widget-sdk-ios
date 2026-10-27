@@ -217,9 +217,6 @@ public class LimechatWidget: UIView {
         } else {
             badge.isHidden = true
         }
-        
-        // Also update widget icon if using default icon
-        widgetIcon?.setUnreadCount(unreadCount)
     }
     
     private func applyStyles() {
@@ -281,7 +278,7 @@ private extension UIView {
 // MARK: - SwiftUI Wrapper
 
 /// SwiftUI wrapper for LimechatWidget (like React Native component usage)
-public struct LimechatWidgetView: UIViewRepresentable {
+public struct LimechatWidgetSwiftUIView: UIViewRepresentable {
     
     public let configuration: WidgetConfiguration
     public let customButton: UIView?

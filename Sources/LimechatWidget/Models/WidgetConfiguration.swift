@@ -18,6 +18,18 @@ public struct WidgetConfiguration {
     /// Custom attributes to attach to the session
     public let customAttributes: [String: Any]?
     
+    /// Base URL for the widget (optional, defaults to production)
+    public let baseURL: String
+    
+    /// External conversation token (android `conversationToken`). when set, it is used instead of the stored one
+    public let conversationToken: String?
+    
+    /// External token management (android `onConversationTokenChange`). when set, the sdk does not persist tokens
+    public let onConversationTokenChange: ((String) -> Void)?
+    
+    /// Storage key for the internally managed token (android `instanceId`). nil or blank -> "default"
+    public let instanceId: String?
+    
     /// Color scheme options
     public enum ColorScheme: String, CaseIterable {
         case light = "light"
@@ -69,20 +81,33 @@ public struct WidgetConfiguration {
         locale: String = "en",
         colorScheme: ColorScheme = .auto,
         user: User? = nil,
-        customAttributes: [String: Any]? = nil
+        customAttributes: [String: Any]? = nil,
+        baseURL: String = "https://app.limechat.ai",
+        conversationToken: String? = nil,
+        onConversationTokenChange: ((String) -> Void)? = nil,
+        instanceId: String? = nil
     ) {
         self.websiteToken = websiteToken
         self.locale = locale
         self.colorScheme = colorScheme
         self.user = user
         self.customAttributes = customAttributes
+        self.baseURL = baseURL
+        self.conversationToken = conversationToken
+        self.onConversationTokenChange = onConversationTokenChange
+        self.instanceId = instanceId
     }
     
     /// Build the widget URL with parameters
     var widgetURL: URL? {
+        widgetURL(cwConversation: nil)
+    }
+    
+    /// Build the widget URL; `cwConversation` wins over `conversationToken` (android `UrlBuilder`)
+    func widgetURL(cwConversation: String?) -> URL? {
         guard !websiteToken.isEmpty else { return nil }
         
-        var components = URLComponents(string: "https://app.limechat.ai")
+        var components = URLComponents(string: baseURL)
         components?.path = "/widget"
         
         var queryItems = [
@@ -108,7 +133,16 @@ public struct WidgetConfiguration {
             queryItems.append(URLQueryItem(name: "custom_attributes", value: jsonString))
         }
         
+        // Conversation token
+        if let token = cwConversation ?? conversationToken,
+           !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            queryItems.append(URLQueryItem(name: "cw_conversation", value: token))
+        }
+        
         components?.queryItems = queryItems
+        // URLQueryItem leaves `+` raw, which form decoders read as a space
+        let encodedQuery = components?.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
+        components?.percentEncodedQuery = encodedQuery
         return components?.url
     }
     

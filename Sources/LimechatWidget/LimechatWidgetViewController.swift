@@ -113,4 +113,8 @@ extension LimechatWidgetViewController: LimechatWidgetDelegate {
     public func widgetDidReceiveUnreadCount(_ count: Int) {
         widgetDelegate?.widgetDidReceiveUnreadCount(count)
     }
+    
+    public func widgetDidChangeConversationToken(_ token: String) {
+        widgetDelegate?.widgetDidChangeConversationToken(token)
+    }
 }
