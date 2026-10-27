@@ -26,7 +26,7 @@ public class LimechatWidgetIcon: UIView {
     /// Icon size (default: 60x60)
     public var iconSize: CGFloat = 60 {
         didSet {
-            updateConstraints()
+            updateIconConstraints()
         }
     }
     
@@ -38,16 +38,23 @@ public class LimechatWidgetIcon: UIView {
     }
     
     /// Background color (default: system blue)
-    public var backgroundColor: UIColor = .systemBlue {
-        didSet {
-            self.backgroundColor = backgroundColor
+    public override var backgroundColor: UIColor? {
+        get {
+            return super.backgroundColor
+        }
+        set {
+            super.backgroundColor = newValue
         }
     }
     
     /// Tint color (default: white)
-    public var tintColor: UIColor = .white {
-        didSet {
-            iconImageView.tintColor = tintColor
+    public override var tintColor: UIColor! {
+        get {
+            return super.tintColor
+        }
+        set {
+            super.tintColor = newValue
+            iconImageView?.tintColor = newValue
         }
     }
     
@@ -139,7 +146,7 @@ public class LimechatWidgetIcon: UIView {
         }
     }
     
-    private func updateConstraints() {
+    private func updateIconConstraints() {
         // Update size constraints if needed
         // This would be handled by the parent view controller
     }
