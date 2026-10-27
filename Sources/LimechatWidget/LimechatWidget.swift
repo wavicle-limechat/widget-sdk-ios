@@ -175,11 +175,7 @@ public class LimechatWidget: UIView {
     
     private func openWidget() {
         guard let viewController = findViewController() else { return }
-        
-        let widgetVC = LimechatWidgetViewController(configuration: configuration)
-        widgetVC.widgetDelegate = delegate
-        
-        viewController.present(widgetVC, animated: true)
+        LimechatWidgetViewController.present(from: viewController, configuration: configuration, delegate: delegate)
     }
     
     // MARK: - Public Methods
@@ -197,7 +193,7 @@ public class LimechatWidget: UIView {
         
         if unreadCount > 0 {
             badge.isHidden = false
-            countLabel.text = unreadCount > 99 ? "99+" : "\(unreadCount)"
+            countLabel.text = unreadBadgeText(unreadCount)
         } else {
             badge.isHidden = true
         }
@@ -233,20 +229,6 @@ public class LimechatWidget: UIView {
         }
         if let cornerRadius = unreadCountStyle["cornerRadius"] as? CGFloat {
             badge.layer.cornerRadius = cornerRadius
-        }
-    }
-}
-
-// MARK: - Helper Extension
-
-private extension UIView {
-    func findViewController() -> UIViewController? {
-        if let nextResponder = self.next as? UIViewController {
-            return nextResponder
-        } else if let nextResponder = self.next as? UIView {
-            return nextResponder.findViewController()
-        } else {
-            return nil
         }
     }
 }

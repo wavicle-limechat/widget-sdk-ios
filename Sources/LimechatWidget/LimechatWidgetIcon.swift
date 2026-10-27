@@ -115,7 +115,7 @@ public class LimechatWidgetIcon: UIView {
                     ])
                 }
             }
-            unreadCountLabel?.text = unreadCount > 99 ? "99+" : "\(unreadCount)"
+            unreadCountLabel?.text = unreadBadgeText(unreadCount)
         } else {
             unreadCountLabel?.removeFromSuperview()
             unreadCountLabel = nil
@@ -153,18 +153,6 @@ public class LimechatWidgetIcon: UIView {
         )
     }
     
-    // MARK: - Helper Methods
-    
-    private func findViewController() -> UIViewController? {
-        var responder: UIResponder? = self
-        while let nextResponder = responder?.next {
-            if let viewController = nextResponder as? UIViewController {
-                return viewController
-            }
-            responder = nextResponder
-        }
-        return nil
-    }
 }
 
 // MARK: - Convenience Extensions
@@ -193,36 +181,24 @@ public extension UIViewController {
         
         icon.translatesAutoresizingMaskIntoConstraints = false
         
+        let safeArea = view.safeAreaLayoutGuide
+        var constraints = [
+            icon.widthAnchor.constraint(equalToConstant: icon.iconSize),
+            icon.heightAnchor.constraint(equalToConstant: icon.iconSize)
+        ]
         switch position {
-        case .bottomRight:
-            NSLayoutConstraint.activate([
-                icon.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
-                icon.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
-                icon.widthAnchor.constraint(equalToConstant: icon.iconSize),
-                icon.heightAnchor.constraint(equalToConstant: icon.iconSize)
-            ])
-        case .bottomLeft:
-            NSLayoutConstraint.activate([
-                icon.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
-                icon.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 20),
-                icon.widthAnchor.constraint(equalToConstant: icon.iconSize),
-                icon.heightAnchor.constraint(equalToConstant: icon.iconSize)
-            ])
-        case .topRight:
-            NSLayoutConstraint.activate([
-                icon.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
-                icon.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
-                icon.widthAnchor.constraint(equalToConstant: icon.iconSize),
-                icon.heightAnchor.constraint(equalToConstant: icon.iconSize)
-            ])
-        case .topLeft:
-            NSLayoutConstraint.activate([
-                icon.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
-                icon.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 20),
-                icon.widthAnchor.constraint(equalToConstant: icon.iconSize),
-                icon.heightAnchor.constraint(equalToConstant: icon.iconSize)
-            ])
+        case .bottomRight, .bottomLeft:
+            constraints.append(icon.bottomAnchor.constraint(equalTo: safeArea.bottomAnchor, constant: -20))
+        case .topRight, .topLeft:
+            constraints.append(icon.topAnchor.constraint(equalTo: safeArea.topAnchor, constant: 20))
         }
+        switch position {
+        case .bottomRight, .topRight:
+            constraints.append(icon.trailingAnchor.constraint(equalTo: safeArea.trailingAnchor, constant: -20))
+        case .bottomLeft, .topLeft:
+            constraints.append(icon.leadingAnchor.constraint(equalTo: safeArea.leadingAnchor, constant: 20))
+        }
+        NSLayoutConstraint.activate(constraints)
         
         return icon
     }
@@ -234,4 +210,8 @@ public enum WidgetIconPosition {
     case topRight
     case bottomLeft
     case bottomRight
+}
+
+func unreadBadgeText(_ count: Int) -> String {
+    count > 99 ? "99+" : "\(count)"
 }
