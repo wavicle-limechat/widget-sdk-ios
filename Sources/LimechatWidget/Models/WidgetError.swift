@@ -19,16 +19,4 @@ public enum WidgetError: LocalizedError {
             return "Unknown Error: \(message)"
         }
     }
-    
-    /// Create error from URLError
-    public static func from(_ urlError: URLError) -> WidgetError {
-        switch urlError.code {
-        case .timedOut:
-            return .networkError("Request timed out")
-        case .notConnectedToInternet, .networkConnectionLost:
-            return .networkError("No internet connection")
-        default:
-            return .networkError("Network error: \(urlError.localizedDescription)")
-        }
-    }
 }

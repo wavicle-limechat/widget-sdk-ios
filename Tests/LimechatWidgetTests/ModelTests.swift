@@ -11,13 +11,6 @@ final class ModelTests: XCTestCase {
         XCTAssertEqual(WidgetError.webViewError("c").localizedDescription, "WebView Error: c")
     }
 
-    func testErrorFromURLError() {
-        XCTAssertEqual(WidgetError.from(URLError(.timedOut)).errorDescription, "Network Error: Request timed out")
-        XCTAssertEqual(WidgetError.from(URLError(.notConnectedToInternet)).errorDescription, "Network Error: No internet connection")
-        XCTAssertEqual(WidgetError.from(URLError(.networkConnectionLost)).errorDescription, "Network Error: No internet connection")
-        XCTAssertTrue(WidgetError.from(URLError(.badURL)).errorDescription!.hasPrefix("Network Error: Network error: "))
-    }
-
     func testColorSchemeRawValues() {
         XCTAssertEqual(WidgetConfiguration.ColorScheme.allCases.map(\.rawValue), ["light", "dark", "auto"])
         XCTAssertNotEqual(WidgetConfiguration.ColorScheme.system, .auto)
