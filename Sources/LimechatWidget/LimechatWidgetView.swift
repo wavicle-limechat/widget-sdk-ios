@@ -1,57 +1,6 @@
 import UIKit
 import WebKit
 
-/// Delegate protocol for widget events
-public protocol LimechatWidgetDelegate: AnyObject {
-    func widgetDidLoad()
-    func widgetDidRequestClose()
-    func widgetDidReceiveError(_ error: WidgetError)
-    func widgetDidReceiveMessage(_ message: [String: Any])
-    func widgetDidReceiveUnreadCount(_ count: Int)
-    /// Called when the widget reports a new conversation token (`set-cw-conversation`).
-    /// Same as android `WidgetCallback.onConversationTokenChange`.
-    func widgetDidChangeConversationToken(_ token: String)
-}
-
-public extension LimechatWidgetDelegate {
-    func widgetDidChangeConversationToken(_ token: String) {}
-}
-
-/// Persists conversation tokens like the android sdk: storage `limechat_widget_conversations`,
-/// key = `instanceId` (or `"default"`), shared in-memory cache in front.
-enum ConversationTokenStore {
-    static let storageName = "limechat_widget_conversations"
-    static let defaultInstanceId = "default"
-    static var defaults: UserDefaults = UserDefaults(suiteName: storageName) ?? .standard
-    static var memoryCache: [String: String] = [:]
-
-    static func load(instanceId: String) -> String? {
-        if let token = memoryCache[instanceId] { return token }
-        let token = defaults.string(forKey: instanceId)
-        if let token = token { memoryCache[instanceId] = token }
-        return token
-    }
-
-    static func save(_ token: String, instanceId: String) {
-        memoryCache[instanceId] = token
-        defaults.set(token, forKey: instanceId)
-    }
-}
-
-/// Forwards script messages to a weakly held handler so the content controller
-/// does not retain the widget view (it would otherwise leak with its webview).
-final class WeakScriptMessageHandler: NSObject, WKScriptMessageHandler {
-    weak var target: WKScriptMessageHandler?
-
-    init(target: WKScriptMessageHandler) {
-        self.target = target
-    }
-
-    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        target?.userContentController(userContentController, didReceive: message)
-    }
-}
-
 /// Main widget view that renders the Limechat widget in a WebView
 public class LimechatWidgetView: UIView {
     
