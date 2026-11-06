@@ -212,8 +212,8 @@ final class LauncherTests: XCTestCase {
         w.open(message: "hi")
         let presented = host.presentedViewController as? LimechatWidgetViewController
         XCTAssertNotNil(presented)
-        let url = presented?.view.allSubviews(of: LimechatWidgetView.self).first?.testWebView.url
-        XCTAssertTrue(url?.absoluteString.contains("lc_open_message=hi") == true, "\(String(describing: url))")
+        let view = presented?.view.allSubviews(of: LimechatWidgetView.self).first
+        XCTAssertEqual(view?.pendingOpen as? String, "hi")
         window.isHidden = true
     }
 
@@ -229,8 +229,8 @@ final class LauncherTests: XCTestCase {
         w.open(message: "second")
         XCTAssertTrue(host.presentedViewController === first)
         let presented = host.presentedViewController as? LimechatWidgetViewController
-        let url = presented?.view.allSubviews(of: LimechatWidgetView.self).first?.testWebView.url
-        XCTAssertTrue(url?.absoluteString.contains("lc_open_message=second") == true, "\(String(describing: url))")
+        let view = presented?.view.allSubviews(of: LimechatWidgetView.self).first
+        XCTAssertEqual(view?.pendingOpen as? String, "second")
         window.isHidden = true
     }
 
@@ -246,9 +246,8 @@ final class LauncherTests: XCTestCase {
         w.open(messageData: ["content": "payload"])
         XCTAssertTrue(host.presentedViewController === first)
         let presented = host.presentedViewController as? LimechatWidgetViewController
-        let url = presented?.view.allSubviews(of: LimechatWidgetView.self).first?.testWebView.url
-        XCTAssertTrue(url?.absoluteString.contains("lc_open_payload") == true, "\(String(describing: url))")
-        XCTAssertTrue(url?.absoluteString.contains("payload") == true, "\(String(describing: url))")
+        let view = presented?.view.allSubviews(of: LimechatWidgetView.self).first
+        XCTAssertEqual(view?.pendingOpen as? NSDictionary, ["content": "payload"])
         window.isHidden = true
     }
 
@@ -270,6 +269,8 @@ final class LauncherTests: XCTestCase {
         let url = presented?.view.allSubviews(of: LimechatWidgetView.self).first?.testWebView.url
         XCTAssertTrue(url?.absoluteString.contains("website_token=tokenA") == true, "\(String(describing: url))")
         XCTAssertFalse(url?.absoluteString.contains("for%20B") == true, "\(String(describing: url))")
+        let view = presented?.view.allSubviews(of: LimechatWidgetView.self).first
+        XCTAssertEqual(view?.pendingOpen as? String, "for A")
         window.isHidden = true
     }
 

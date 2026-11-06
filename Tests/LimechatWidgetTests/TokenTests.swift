@@ -159,13 +159,14 @@ final class TokenTests: XCTestCase {
         XCTAssertEqual(loadedToken(view), "new") // the live token is kept for reloads
     }
 
-    func testExternalModeOpenWithMessageKeepsTheLiveToken() {
+    func testOpenWithMessageDoesNotReloadTheWidget() {
         let view = makeView(WidgetConfiguration(websiteToken: "t", baseURL: base,
                                                 onConversationTokenChange: { _ in }))
         XCTAssertNil(loadedToken(view))
         post(setCw("minted"), to: view)
-        view.open(message: "x")
-        XCTAssertEqual(loadedToken(view), "minted")
+        view.open(message: "x") // held while the first load runs, no second load
+        XCTAssertNil(loadedToken(view))
+        XCTAssertEqual(view.pendingOpen as? String, "x")
     }
 
     func testCallbackOnlyModeSkipsPersistenceAndLoadsStoredToken() {

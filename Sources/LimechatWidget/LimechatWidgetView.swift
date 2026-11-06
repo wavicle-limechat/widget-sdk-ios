@@ -14,6 +14,7 @@ public class LimechatWidgetView: UIView {
     var pageStarted = false
     /// true once the widget posted set-cw-conversation on the current document
     var widgetReady = false
+    var pendingOpen: Any?
     
     public weak var delegate: LimechatWidgetDelegate?
     
@@ -83,6 +84,7 @@ public class LimechatWidgetView: UIView {
     /// Initialize the widget with configuration
     public func initialize(with configuration: WidgetConfiguration, initialMessage: String? = nil, initialMessageData: [String: Any]? = nil) {
         self.configuration = configuration
+        pendingOpen = nil
         
         // same as android: instanceId or "default"; external token wins over the stored one
         if let id = configuration.instanceId, !id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -97,7 +99,17 @@ public class LimechatWidgetView: UIView {
         }
         
         installUserScript()
-        loadWidget(openMessage: initialMessage, openPayload: initialMessageData)
+        if let data = initialMessageData, !data.isEmpty {
+            if JSONSerialization.isValidJSONObject(data) {
+                pendingOpen = data
+            } else {
+                delegate?.widgetDidReceiveError(.webViewError("Failed to serialize message"))
+            }
+        }
+        if pendingOpen == nil, let message = initialMessage, !message.isEmpty {
+            pendingOpen = message
+        }
+        loadWidget()
     }
     
     /// Send a message to the widget
@@ -122,20 +134,20 @@ public class LimechatWidgetView: UIView {
         }
     }
     
-    /// Reload the widget and open it with a message
+    /// Open the widget with a message. Sent now if the widget is ready, otherwise held until it is
     public func open(message: String) {
-        guard configuration != nil else { return }
-        loadWidget(openMessage: message)
+        guard configuration != nil, !message.isEmpty else { return }
+        deliverOpen(message)
     }
     
-    /// Reload the widget and open it with a `{content, submitted_values}` payload
+    /// Open the widget with a `{content, submitted_values}` payload
     public func open(messageData: [String: Any]) {
-        guard configuration != nil else { return }
+        guard configuration != nil, !messageData.isEmpty else { return }
         guard JSONSerialization.isValidJSONObject(messageData) else {
             delegate?.widgetDidReceiveError(.webViewError("Failed to serialize message"))
             return
         }
-        loadWidget(openPayload: messageData)
+        deliverOpen(messageData)
     }
     
     /// Reload the widget
@@ -155,9 +167,18 @@ public class LimechatWidgetView: UIView {
         controller.addUserScript(WKUserScript(source: source, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
     }
     
-    private func loadWidget(openMessage: String? = nil, openPayload: [String: Any]? = nil) {
+    private func deliverOpen(_ message: Any) {
+        if widgetReady {
+            sendMessage(event: "open-with-message", data: ["openMessage": message])
+            return
+        }
+        pendingOpen = message
+        if !webView.isLoading { loadWidget() }
+    }
+    
+    private func loadWidget() {
         guard let configuration = configuration,
-              let url = configuration.widgetURL(cwConversation: cwConversation, openMessage: openMessage, openPayload: openPayload) else {
+              let url = configuration.widgetURL(cwConversation: cwConversation) else {
             let error = WidgetError.configurationError("Invalid configuration or URL")
             delegate?.widgetDidReceiveError(error)
             return

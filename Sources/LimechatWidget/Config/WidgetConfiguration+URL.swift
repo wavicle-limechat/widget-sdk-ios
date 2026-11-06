@@ -7,7 +7,7 @@ extension WidgetConfiguration {
     }
     
     /// Build the widget URL; `cwConversation` wins over `conversationToken` (android `UrlBuilder`)
-    func widgetURL(cwConversation: String?, openMessage: String? = nil, openPayload: [String: Any]? = nil) -> URL? {
+    func widgetURL(cwConversation: String?) -> URL? {
         guard !websiteToken.isEmpty else { return nil }
         
         var components = URLComponents(string: baseURL)
@@ -36,16 +36,6 @@ extension WidgetConfiguration {
         
         if hideFilePicker {
             queryItems.append(URLQueryItem(name: "hide_file_picker", value: "true"))
-        }
-        
-        if let openMessage = openMessage {
-            queryItems.append(URLQueryItem(name: "lc_open_message", value: openMessage.replacingOccurrences(of: "%", with: "%25")))
-        }
-        if let openPayload = openPayload,
-           JSONSerialization.isValidJSONObject(openPayload),
-           let data = try? JSONSerialization.data(withJSONObject: openPayload),
-           let json = String(data: data, encoding: .utf8) {
-            queryItems.append(URLQueryItem(name: "lc_open_payload", value: json.replacingOccurrences(of: "%", with: "\\u0025")))
         }
         
         components?.queryItems = queryItems

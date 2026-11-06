@@ -76,13 +76,13 @@ public class LimechatWidgetViewController: UIViewController {
         widgetView.sendMessage(event: event, data: data)
     }
     
-    /// Reload the widget and open it with a message
+    /// Open the widget with a message. Sent now if the widget is ready, otherwise held until it is
     public func open(message: String) {
         loadViewIfNeeded()
         widgetView.open(message: message)
     }
     
-    /// Reload the widget and open it with a `{content, submitted_values}` payload
+    /// Open the widget with a `{content, submitted_values}` payload
     public func open(messageData: [String: Any]) {
         loadViewIfNeeded()
         widgetView.open(messageData: messageData)

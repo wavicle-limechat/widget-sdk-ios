@@ -229,6 +229,100 @@ final class BridgeTests: XCTestCase {
         XCTAssertEqual(echoes().count, 0)
     }
 
+    // MARK: open (held until ready)
+
+    private func openEchoes() -> [NSDictionary] {
+        echoes().compactMap(parsedEchoData).filter { $0["event"] as? String == "open-with-message" }
+    }
+
+    func testOpenWhileReadyPostsAndDoesNotReload() {
+        view.configuration = WidgetConfiguration(websiteToken: "t")
+        loadPage(echoPage, into: view, spy: spy)
+        let urlBefore = view.testWebView.url
+        view.open(message: "hi")
+        view.open(messageData: ["content": "c", "submitted_values": ["a": 1]])
+        waitForEchoes(2)
+        XCTAssertEqual(view.testWebView.url, urlBefore)
+        XCTAssertEqual(openEchoes(), [["event": "open-with-message", "openMessage": "hi"],
+                                      ["event": "open-with-message", "openMessage": ["content": "c", "submitted_values": ["a": 1]]]])
+        XCTAssertNil(view.pendingOpen)
+    }
+
+    func testHeldMessageIsSentOnceAtReady() {
+        view.configuration = WidgetConfiguration(websiteToken: "t")
+        view.pendingOpen = "held"
+        loadPage(echoPage, into: view, spy: spy)
+        waitForEchoes(1)
+        XCTAssertNil(view.pendingOpen)
+        loadPage(echoPage, into: view, spy: spy) // a second document must not resend it
+        settle()
+        XCTAssertEqual(openEchoes(), [["event": "open-with-message", "openMessage": "held"]])
+    }
+
+    func testReadyOrderIsSetUserThenOpen() {
+        view.configuration = WidgetConfiguration(websiteToken: "t", user: .init(identifier: "id1", identifierHash: "h1"))
+        view.pendingOpen = "held"
+        loadPage(echoPage, into: view, spy: spy)
+        waitForEchoes(2)
+        XCTAssertEqual(echoes().compactMap(parsedEchoData).map { $0["event"] as? String }, ["set-user", "open-with-message"])
+    }
+
+    func testOpenBeforeReadyKeepsTheMessageOutOfTheURL() {
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", baseURL: "http://localhost:1"), initialMessage: "from init")
+        XCTAssertEqual(view.pendingOpen as? String, "from init")
+        view.open(message: "later")
+        XCTAssertEqual(view.pendingOpen as? String, "later")
+        view.open(messageData: ["content": "payload"])
+        XCTAssertEqual(view.pendingOpen as? NSDictionary, ["content": "payload"])
+        let url = view.testWebView.url?.absoluteString ?? ""
+        XCTAssertFalse(url.contains("lc_open"), url)
+        XCTAssertFalse(url.contains("payload"), url)
+    }
+
+    func testOpenMessageTextIsExact() {
+        let text = "50% off + a%20b 👋 it's"
+        view.configuration = WidgetConfiguration(websiteToken: "t")
+        view.pendingOpen = text
+        loadPage(echoPage, into: view, spy: spy)
+        waitForEchoes(1)
+        XCTAssertEqual(openEchoes(), [["event": "open-with-message", "openMessage": text]])
+    }
+
+    func testEmptyOpenIsIgnored() {
+        view.configuration = WidgetConfiguration(websiteToken: "t")
+        loadPage(echoPage, into: view, spy: spy)
+        let urlBefore = view.testWebView.url
+        view.open(message: "")
+        view.open(messageData: [:])
+        settle()
+        XCTAssertNil(view.pendingOpen)
+        XCTAssertEqual(view.testWebView.url, urlBefore)
+        XCTAssertEqual(echoes().count, 0)
+        XCTAssertEqual(spy.calls, [.didLoad])
+    }
+
+    func testReInitializeDropsAHeldMessage() {
+        let config = WidgetConfiguration(websiteToken: "t", baseURL: "http://localhost:1")
+        view.initialize(with: config, initialMessage: "a")
+        XCTAssertEqual(view.pendingOpen as? String, "a")
+        view.initialize(with: config)
+        XCTAssertNil(view.pendingOpen)
+    }
+
+    func testWebViewIsLoadingStraightAfterInitialize() {
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", baseURL: "http://localhost:1"))
+        XCTAssertTrue(view.testWebView.isLoading)
+    }
+
+    func testInitializeThenOpenDoesNotReportAnError() {
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", baseURL: "http://localhost:1"))
+        view.open(message: "hi")
+        settle()
+        let errors = spy.calls.compactMap { call -> String? in if case .error(let e) = call { return e } else { return nil } }
+        XCTAssertFalse(errors.contains { $0.lowercased().contains("cancel") || $0.contains("-999") }, "\(errors)")
+        XCTAssertEqual(view.pendingOpen as? String, "hi")
+    }
+
     func testSendMessageBeforeInitializeDoesNotReportError() {
         // webView exists from init; evaluateJavaScript on the empty page succeeds.
         let done = expectation(description: "settle")

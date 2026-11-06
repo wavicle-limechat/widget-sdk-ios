@@ -207,53 +207,19 @@ final class URLTests: XCTestCase {
 
     // MARK: hide_file_picker
 
-    func testHideFilePickerIsSentWhenTrueAndComesBeforeOpenParams() {
+    func testHideFilePickerIsSentWhenTrueAndComesAfterTheToken() {
         let c = WidgetConfiguration(websiteToken: "t", conversationToken: "jwt", hideFilePicker: true)
-        let url = c.widgetURL(cwConversation: nil, openMessage: "hi")
+        let url = c.widgetURL
         XCTAssertEqual(value("hide_file_picker", url), "true")
-        XCTAssertEqual(Array(items(url).map(\.name).suffix(3)), ["cw_conversation", "hide_file_picker", "lc_open_message"])
+        XCTAssertEqual(Array(items(url).map(\.name).suffix(2)), ["cw_conversation", "hide_file_picker"])
     }
 
     func testHideFilePickerIsAbsentByDefault() {
         XCTAssertNil(value("hide_file_picker", WidgetConfiguration(websiteToken: "t").widgetURL))
     }
 
-    // MARK: lc_open_message / lc_open_payload
-
-    func testOpenMessageRoundTripsAndComesAfterCwConversation() {
-        let c = WidgetConfiguration(websiteToken: "t", conversationToken: "jwt")
-        let url = c.widgetURL(cwConversation: nil, openMessage: "50% off + free")
-        // the widget decodes the value a second time
-        XCTAssertEqual(value("lc_open_message", url)?.removingPercentEncoding, "50% off + free")
-        let names = items(url).map(\.name)
-        XCTAssertEqual(Array(names.suffix(2)), ["cw_conversation", "lc_open_message"])
-        XCTAssertTrue(url!.absoluteString.hasSuffix("lc_open_message=50%2525%20off%20%2B%20free"), url!.absoluteString)
-    }
-
-    func testOpenMessagePercentIsEscapedSoTheWidgetsSecondDecodeKeepsIt() {
-        let url = WidgetConfiguration(websiteToken: "t").widgetURL(cwConversation: nil, openMessage: "a%20b")
-        let once = value("lc_open_message", url)!
-        XCTAssertEqual(once.removingPercentEncoding, "a%20b")
-    }
-
-    func testOpenPayloadPercentIsEscapedInsideTheJSON() throws {
-        let url = WidgetConfiguration(websiteToken: "t").widgetURL(cwConversation: nil, openPayload: ["content": "50% off"])
-        let raw = try XCTUnwrap(value("lc_open_payload", url))
-        XCTAssertFalse(raw.contains("%"), raw)
-        let decoded = try JSONSerialization.jsonObject(with: Data(raw.utf8)) as? NSDictionary
-        XCTAssertEqual(decoded, ["content": "50% off"])
-    }
-
-    func testOpenParamsAreAbsentByDefault() {
-        let url = WidgetConfiguration(websiteToken: "t").widgetURL
-        XCTAssertNil(value("lc_open_message", url))
-        XCTAssertNil(value("lc_open_payload", url))
-    }
-
-    func testNonJSONCustomAttributesAndOpenPayloadAreOmittedWithoutCrashing() {
+    func testNonJSONCustomAttributesAreOmittedWithoutCrashing() {
         let c = WidgetConfiguration(websiteToken: "t", customAttributes: ["when": Date()])
-        let url = c.widgetURL(cwConversation: nil, openPayload: ["sentAt": Date()])
-        XCTAssertNil(value("custom_attributes", url))
-        XCTAssertNil(value("lc_open_payload", url))
+        XCTAssertNil(value("custom_attributes", c.widgetURL))
     }
 }
