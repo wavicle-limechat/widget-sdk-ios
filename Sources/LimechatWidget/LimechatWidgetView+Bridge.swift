@@ -28,6 +28,7 @@ extension LimechatWidgetView {
     func markWidgetReady() -> Bool {
         guard pageStarted, !widgetReady else { return false }
         widgetReady = true
+        processRecoveryUsed = false
         sendVerifiedUser()
         flushMessageAttributes()
         if let message = pendingOpen {

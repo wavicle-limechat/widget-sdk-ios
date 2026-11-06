@@ -43,6 +43,12 @@ extension LimechatWidgetView: WKNavigationDelegate {
     public func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         pageStarted = false
         widgetReady = false
+        if processRecoveryUsed {
+            delegate?.widgetDidReceiveError(.webViewError("Widget web process died again before ready"))
+            return
+        }
+        processRecoveryUsed = true
+        loadWidget()
     }
 
     public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {

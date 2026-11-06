@@ -178,10 +178,95 @@ final class NavigationTests: XCTestCase {
         view.webViewWebContentProcessDidTerminate(view.testWebView)
         XCTAssertFalse(view.widgetReady)
         XCTAssertFalse(view.pageStarted)
+        XCTAssertTrue(view.processRecoveryUsed)
         view.open(message: "hi")
         XCTAssertEqual(view.pendingOpen as? String, "hi")
         XCTAssertTrue(view.testWebView.isLoading)
         view.testWebView.stopLoading()
+    }
+
+    func testProcessDeathReloadsOnceThenReportsUntilReady() throws {
+        let server = try LocalHTTPServer()
+        defer { server.stop() }
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", baseURL: "http://localhost:\(server.port)"))
+        waitForRequests(server, 1)
+
+        // first death: one reload, no error
+        view.webViewWebContentProcessDidTerminate(view.testWebView)
+        waitForRequests(server, 2)
+        XCTAssertEqual(calls(), [])
+
+        // second death before ready: no reload, one error
+        view.webViewWebContentProcessDidTerminate(view.testWebView)
+        waitForRequests(server, 3, expectLoad: false)
+        XCTAssertEqual(calls(), [.error("WebView Error: Widget web process died again before ready")])
+
+        // a manual reload does not reset the flag
+        view.reload()
+        waitForRequests(server, 3)
+        view.webViewWebContentProcessDidTerminate(view.testWebView)
+        waitForRequests(server, 4, expectLoad: false)
+        XCTAssertEqual(calls().count, 2)
+
+        // the first ready resets it
+        view.webView(view.testWebView, didCommit: nil)
+        ready()
+        view.webViewWebContentProcessDidTerminate(view.testWebView)
+        waitForRequests(server, 4)
+        let died = SpyDelegate.Call.error("WebView Error: Widget web process died again before ready")
+        XCTAssertEqual(calls(), [died, died, .didLoad])
+    }
+
+    /// delegate calls without the cancelled-load errors that a superseding reload produces
+    private func calls() -> [SpyDelegate.Call] {
+        spy.calls.filter { $0 != .error("WebView Error: Failed to load widget: The operation couldn’t be completed. (NSURLErrorDomain error -999.)") }
+    }
+
+    /// waits until the server saw `count` requests, or checks that it did not see them
+    private func waitForRequests(_ server: LocalHTTPServer, _ count: Int, expectLoad: Bool = true) {
+        let deadline = Date().addingTimeInterval(expectLoad ? 10 : 0.8)
+        while server.requests < count && Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.02))
+        }
+        if expectLoad {
+            XCTAssertGreaterThanOrEqual(server.requests, count)
+        } else {
+            XCTAssertLessThan(server.requests, count)
+        }
+    }
+
+    /// kills the real web content process with the private `_killWebContentProcess` and waits for
+    /// webkit to commit the reloaded page. needs a local server and a window.
+    func testProcessDeathWithARealKillRecovers() throws {
+        let server = try LocalHTTPServer()
+        defer { server.stop() }
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        view.frame = window.bounds
+        window.addSubview(view)
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", baseURL: "http://localhost:\(server.port)"))
+        wait(for: [pageCommitted(server, requests: 1)], timeout: 20)
+        XCTAssertEqual(server.requests, 1)
+
+        let kill = NSSelectorFromString("_killWebContentProcess")
+        try XCTSkipUnless(view.testWebView.responds(to: kill), "private kill api missing")
+        _ = view.testWebView.perform(kill)
+        wait(for: [pageCommitted(server, requests: 2)], timeout: 20)
+        XCTAssertEqual(spy.calls, [])
+        XCTAssertTrue(view.processRecoveryUsed)
+    }
+
+    private func pageCommitted(_ server: LocalHTTPServer, requests: Int) -> XCTestExpectation {
+        let exp = expectation(description: "page committed")
+        let timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
+            guard let self = self, self.view.pageStarted, server.requests >= requests else { return }
+            timer.invalidate()
+            exp.fulfill()
+        }
+        addTeardownBlock { timer.invalidate() }
+        return exp
     }
 
     func testMainFrameHTTPErrorIsReported() {

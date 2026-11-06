@@ -14,6 +14,8 @@ public class LimechatWidgetView: UIView {
     var pageStarted = false
     /// true once the widget posted set-cw-conversation on the current document
     var widgetReady = false
+    /// one reload is allowed after the web process dies. a ready page resets it
+    var processRecoveryUsed = false
     var pendingOpen: Any?
     var pendingMessageAttributes: [String: Any] = [:]
     
@@ -196,7 +198,7 @@ public class LimechatWidgetView: UIView {
         if !webView.isLoading { loadWidget() }
     }
     
-    private func loadWidget() {
+    func loadWidget() {
         guard let configuration = configuration,
               let url = configuration.widgetURL(cwConversation: cwConversation) else {
             let error = WidgetError.configurationError("Invalid configuration or URL")
