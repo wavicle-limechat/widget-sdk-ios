@@ -21,6 +21,16 @@ extension LimechatWidgetView {
         
         delegate?.widgetDidChangeConversationToken(token)
     }
+    
+    func sendVerifiedUser() {
+        guard let user = configuration?.user,
+              let identifier = user.identifier, !identifier.isEmpty,
+              let hash = user.identifierHash, !hash.isEmpty else { return }
+        var fields = user.dictionary
+        fields.removeValue(forKey: "phone_number")
+        fields["identifier_hash"] = hash
+        sendMessage(event: "set-user", data: ["identifier": identifier, "user": fields])
+    }
 }
 
 // MARK: - WKScriptMessageHandler

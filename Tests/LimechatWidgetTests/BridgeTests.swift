@@ -183,6 +183,52 @@ final class BridgeTests: XCTestCase {
         XCTAssertEqual((echo?["data"] as? NSDictionary)?["s"] as? String, tricky)
     }
 
+    // MARK: verified identity (set-user)
+
+    private func echoes() -> [NSDictionary] {
+        spy.calls.compactMap { if case .message(let m) = $0, m["event"] as? String == "echo" { return m as NSDictionary } else { return nil } }
+    }
+
+    private func waitForEchoes(_ count: Int) {
+        let deadline = Date().addingTimeInterval(10)
+        while echoes().count < count && Date() < deadline {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        }
+    }
+
+    private func settle() {
+        let done = expectation(description: "settle")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { done.fulfill() }
+        wait(for: [done], timeout: 5)
+    }
+
+    private func parsedEchoData(_ echo: NSDictionary) -> NSDictionary? {
+        guard let text = echo["data"] as? String, text.hasPrefix("chatwoot-widget:") else { return nil }
+        return try? JSONSerialization.jsonObject(with: Data(text.dropFirst("chatwoot-widget:".count).utf8)) as? NSDictionary
+    }
+
+    func testSetUserIsSentOnLoadWhenIdentifierAndHashAreSet() {
+        let user = WidgetConfiguration.User(name: "A", email: "a@x.com", phoneNumber: "1", identifier: "id1", identifierHash: "h1")
+        view.configuration = WidgetConfiguration(websiteToken: "t", user: user)
+        loadPage(echoPage, into: view, spy: spy)
+        waitForEchoes(1)
+        let data = echoes().first.flatMap(parsedEchoData)
+        XCTAssertEqual(data, ["event": "set-user", "identifier": "id1",
+                              "user": ["name": "A", "email": "a@x.com", "identifier_hash": "h1"]])
+    }
+
+    func testSetUserIsNotSentWithHashOnlyOrIdentifierOnly() {
+        loadPage(echoPage, into: view, spy: spy)
+        view.configuration = WidgetConfiguration(websiteToken: "t", user: .init(identifierHash: "h"))
+        view.sendVerifiedUser()
+        view.configuration = WidgetConfiguration(websiteToken: "t", user: .init(identifier: "id"))
+        view.sendVerifiedUser()
+        view.configuration = WidgetConfiguration(websiteToken: "t", user: .init(identifier: "", identifierHash: "h"))
+        view.sendVerifiedUser()
+        settle()
+        XCTAssertEqual(echoes().count, 0)
+    }
+
     func testSendMessageBeforeInitializeDoesNotReportError() {
         // webView exists from init; evaluateJavaScript on the empty page succeeds.
         let done = expectation(description: "settle")

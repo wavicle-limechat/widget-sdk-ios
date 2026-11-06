@@ -27,6 +27,7 @@ extension LimechatWidgetView {
 
 extension LimechatWidgetView: WKNavigationDelegate {
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        sendVerifiedUser()
         delegate?.widgetDidLoad()
     }
     

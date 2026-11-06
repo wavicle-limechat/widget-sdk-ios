@@ -52,15 +52,21 @@ public struct WidgetConfiguration {
         public let name: String?
         public let email: String?
         public let phoneNumber: String?
+        public let identifier: String?
+        public let identifierHash: String?
         
         public init(
             name: String? = nil,
             email: String? = nil,
-            phoneNumber: String? = nil
+            phoneNumber: String? = nil,
+            identifier: String? = nil,
+            identifierHash: String? = nil
         ) {
             self.name = name
             self.email = email
             self.phoneNumber = phoneNumber
+            self.identifier = identifier
+            self.identifierHash = identifierHash
         }
         
         var dictionary: [String: Any] {
