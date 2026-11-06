@@ -22,6 +22,7 @@ public class LimechatWidget: UIView {
     }
     
     /// Style for the container
+    @available(*, deprecated, message: "Unused. Removed at the next major.")
     public var containerStyle: [String: Any] = [:]
     
     /// Style for the default icon
