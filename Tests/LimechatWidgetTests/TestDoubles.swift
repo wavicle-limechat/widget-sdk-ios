@@ -82,6 +82,22 @@ final class FakeNavigationAction: WKNavigationAction {
     override var targetFrame: WKFrameInfo? { nil }
 }
 
+/// WKNavigationResponse with a controllable response/main frame flag.
+final class FakeNavigationResponse: WKNavigationResponse {
+    private let fakeResponse: URLResponse
+    private let fakeMainFrame: Bool
+
+    init(statusCode: Int, isMainFrame: Bool = true) {
+        self.fakeResponse = HTTPURLResponse(url: URL(string: "https://app.limechat.ai/widget")!, statusCode: statusCode,
+                                            httpVersion: nil, headerFields: nil)!
+        self.fakeMainFrame = isMainFrame
+        super.init()
+    }
+
+    override var response: URLResponse { fakeResponse }
+    override var isForMainFrame: Bool { fakeMainFrame }
+}
+
 extension LimechatWidgetView {
     /// The private WKWebView, found through the view hierarchy (no prod change needed).
     var testWebView: WKWebView {
@@ -111,6 +127,15 @@ extension XCTestCase {
         view.testWebView.loadHTMLString(html, baseURL: URL(string: baseURL))
         wait(for: [loaded], timeout: 60) // first load cold-starts the WebContent process
         spy.onCall = nil
+    }
+
+    /// Runs decidePolicyFor navigationResponse on the view and returns the synchronous decision.
+    func decide(_ view: LimechatWidgetView, statusCode: Int, isMainFrame: Bool = true) -> WKNavigationResponsePolicy? {
+        var decision: WKNavigationResponsePolicy?
+        let response = FakeNavigationResponse(statusCode: statusCode, isMainFrame: isMainFrame)
+        _ = Unmanaged.passRetained(response) // WKNavigationResponse.dealloc crashes on a fake, so it is never freed
+        view.webView(view.testWebView, decidePolicyFor: response) { decision = $0 }
+        return decision
     }
 
     func evalJS(_ script: String, in webView: WKWebView) -> Any? {

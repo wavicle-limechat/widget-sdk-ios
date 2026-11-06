@@ -26,6 +26,15 @@ extension LimechatWidgetView {
 // MARK: - WKNavigationDelegate
 
 extension LimechatWidgetView: WKNavigationDelegate {
+    public func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse, decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
+        if navigationResponse.isForMainFrame,
+           let response = navigationResponse.response as? HTTPURLResponse,
+           response.statusCode >= 400 {
+            delegate?.widgetDidReceiveError(.webViewError("HTTP error: \(response.statusCode)"))
+        }
+        decisionHandler(.allow)
+    }
+
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         sendVerifiedUser()
         delegate?.widgetDidLoad()

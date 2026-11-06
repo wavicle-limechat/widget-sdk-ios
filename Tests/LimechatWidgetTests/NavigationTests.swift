@@ -122,6 +122,23 @@ final class NavigationTests: XCTestCase {
         XCTAssertEqual(spy.calls, [.didLoad])
     }
 
+    func testMainFrameHTTPErrorIsReported() {
+        XCTAssertEqual(decide(view, statusCode: 404), .allow)
+        XCTAssertEqual(decide(view, statusCode: 500), .allow)
+        XCTAssertEqual(spy.calls, [.error("WebView Error: HTTP error: 404"), .error("WebView Error: HTTP error: 500")])
+    }
+
+    func testSubframeHTTPErrorIsNotReported() {
+        XCTAssertEqual(decide(view, statusCode: 500, isMainFrame: false), .allow)
+        XCTAssertEqual(spy.calls, [])
+    }
+
+    func testHTTPSuccessIsNotReported() {
+        XCTAssertEqual(decide(view, statusCode: 200), .allow)
+        XCTAssertEqual(decide(view, statusCode: 399), .allow)
+        XCTAssertEqual(spy.calls, [])
+    }
+
     func testDidFailAndProvisionalFailReportWebViewError() {
         let err = NSError(domain: "x", code: 1, userInfo: [NSLocalizedDescriptionKey: "boom"])
         view.webView(view.testWebView, didFail: nil, withError: err)
