@@ -169,6 +169,21 @@ final class TokenTests: XCTestCase {
         XCTAssertEqual(view.pendingOpen as? String, "x")
     }
 
+    func testOpenAfterAFailedLoadReloadsWithTheLiveToken() {
+        let view = makeView(WidgetConfiguration(websiteToken: "t", baseURL: base,
+                                                onConversationTokenChange: { _ in }))
+        post(setCw("minted"), to: view)
+        let deadline = Date().addingTimeInterval(30)
+        while view.testWebView.isLoading && Date() < deadline {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        }
+        XCTAssertFalse(view.testWebView.isLoading)
+        view.open(message: "x") // not loading, so open reloads
+        XCTAssertTrue(view.testWebView.isLoading)
+        XCTAssertEqual(loadedToken(view), "minted")
+        XCTAssertEqual(view.pendingOpen as? String, "x")
+    }
+
     func testCallbackOnlyModeSkipsPersistenceAndLoadsStoredToken() {
         // android: conversationToken nil -> load stored; callback set -> do not persist
         sandbox.defaults.set("stored", forKey: "default")
