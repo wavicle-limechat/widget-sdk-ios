@@ -10,12 +10,13 @@ extension LimechatWidgetView {
             return
         }
         
+        cwConversation = token
+        
         if let onConversationTokenChange = configuration?.onConversationTokenChange {
             // external token management: the host persists the token
             onConversationTokenChange(token)
         } else {
             // internal token management: persist under instanceId
-            cwConversation = token
             ConversationTokenStore.save(token, instanceId: instanceId)
         }
         

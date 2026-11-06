@@ -156,7 +156,16 @@ final class TokenTests: XCTestCase {
         XCTAssertNil(sandbox.defaults.string(forKey: "default"))
         XCTAssertNil(ConversationTokenStore.memoryCache["default"])
         view.reload()
-        XCTAssertEqual(loadedToken(view), "old") // host feeds the new token back via config, like android
+        XCTAssertEqual(loadedToken(view), "new") // the live token is kept for reloads
+    }
+
+    func testExternalModeOpenWithMessageKeepsTheLiveToken() {
+        let view = makeView(WidgetConfiguration(websiteToken: "t", baseURL: base,
+                                                onConversationTokenChange: { _ in }))
+        XCTAssertNil(loadedToken(view))
+        post(setCw("minted"), to: view)
+        view.open(message: "x")
+        XCTAssertEqual(loadedToken(view), "minted")
     }
 
     func testCallbackOnlyModeSkipsPersistenceAndLoadsStoredToken() {
