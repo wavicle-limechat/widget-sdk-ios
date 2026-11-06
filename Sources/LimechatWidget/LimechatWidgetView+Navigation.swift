@@ -52,13 +52,19 @@ extension LimechatWidgetView: WKNavigationDelegate {
     }
 
     public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        let widgetError = WidgetError.webViewError("Failed to load widget: \(error.localizedDescription)")
-        delegate?.widgetDidReceiveError(widgetError)
+        reportLoadFailure(error)
     }
     
     public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        let widgetError = WidgetError.webViewError("Failed to load widget: \(error.localizedDescription)")
-        delegate?.widgetDidReceiveError(widgetError)
+        reportLoadFailure(error)
+    }
+    
+    private func reportLoadFailure(_ error: Error) {
+        let error = error as NSError
+        // a newer load replaced this one, same rule as react-native-webview
+        if error.domain == NSURLErrorDomain, error.code == NSURLErrorCancelled { return }
+        if error.domain == "WebKitErrorDomain", error.code == 102 { return }
+        delegate?.widgetDidReceiveError(.webViewError("Failed to load widget: \(error.localizedDescription)"))
     }
     
     public func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {

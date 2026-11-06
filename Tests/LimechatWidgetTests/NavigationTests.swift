@@ -195,19 +195,19 @@ final class NavigationTests: XCTestCase {
         // first death: one reload, no error
         view.webViewWebContentProcessDidTerminate(view.testWebView)
         waitForRequests(server, 2)
-        XCTAssertEqual(calls(), [])
+        XCTAssertEqual(spy.calls, [])
 
         // second death before ready: no reload, one error
         view.webViewWebContentProcessDidTerminate(view.testWebView)
         waitForRequests(server, 3, expectLoad: false)
-        XCTAssertEqual(calls(), [.error("WebView Error: Widget web process died again before ready")])
+        XCTAssertEqual(spy.calls, [.error("WebView Error: Widget web process died again before ready")])
 
         // a manual reload does not reset the flag
         view.reload()
         waitForRequests(server, 3)
         view.webViewWebContentProcessDidTerminate(view.testWebView)
         waitForRequests(server, 4, expectLoad: false)
-        XCTAssertEqual(calls().count, 2)
+        XCTAssertEqual(spy.calls.count, 2)
 
         // the first ready resets it
         view.webView(view.testWebView, didCommit: nil)
@@ -215,15 +215,7 @@ final class NavigationTests: XCTestCase {
         view.webViewWebContentProcessDidTerminate(view.testWebView)
         waitForRequests(server, 4)
         let died = SpyDelegate.Call.error("WebView Error: Widget web process died again before ready")
-        XCTAssertEqual(calls(), [died, died, .didLoad])
-    }
-
-    /// delegate calls without the load errors that a superseding load produces (-999, "Frame load interrupted")
-    private func calls() -> [SpyDelegate.Call] {
-        spy.calls.filter { call in
-            if case .error(let text) = call { return !text.contains("Failed to load widget") }
-            return true
-        }
+        XCTAssertEqual(spy.calls, [died, died, .didLoad])
     }
 
     /// waits until the server saw `count` requests, or checks that it did not see them
@@ -241,6 +233,17 @@ final class NavigationTests: XCTestCase {
 
     /// kills the real web content process with the private `_killWebContentProcess` and waits for
     /// webkit to commit the reloaded page. needs a local server and a window.
+    func testAReloadDuringALoadReportsNoError() throws {
+        let server = try LocalHTTPServer(holdFirstResponse: true)
+        defer { server.stop() }
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", baseURL: "http://localhost:\(server.port)"))
+        waitForRequests(server, 1)
+        view.reload()
+        waitForRequests(server, 2)
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        XCTAssertEqual(spy.calls, [])
+    }
+
     func testProcessDeathWithARealKillRecovers() throws {
         let server = try LocalHTTPServer()
         defer { server.stop() }
