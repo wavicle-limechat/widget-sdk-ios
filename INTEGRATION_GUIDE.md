@@ -82,7 +82,6 @@ class ViewController: UIViewController {
         let configuration = WidgetConfiguration(
             websiteToken: "YOUR_WEBSITE_TOKEN", // e.g., "MEFFACy4xaovJayhLjSt836h"
             locale: "en", // Supported: en, es, fr, de, it, pt
-            colorScheme: .light, // .light, .dark, or .auto
             user: user,
             customAttributes: [
                 "source": "ios_app",
@@ -143,7 +142,6 @@ class MainViewController: UIViewController {
         let configuration = WidgetConfiguration(
             websiteToken: "MEFFACy4xaovJayhLjSt836h",
             locale: "en",
-            colorScheme: .auto,
             user: user,
             customAttributes: [
                 "source": "ios_app",
@@ -160,38 +158,21 @@ class MainViewController: UIViewController {
         )
     }
 }
-
-// MARK: - LimechatWidgetDelegate
-
-extension MainViewController: LimechatWidgetDelegate {
-    
-    func widgetDidLoad() {
-        print("Widget loaded")
-    }
-    
-    func widgetDidRequestClose() {
-        print("Widget closed")
-    }
-    
-    func widgetDidReceiveError(_ error: WidgetError) {
-        print("Error: \(error)")
-    }
-    
-    func widgetDidReceiveMessage(_ message: [String: Any]) {
-        print("Message: \(message)")
-    }
-}
 ```
+
+Implement `LimechatWidgetDelegate` as in the previous section.
 
 ## SwiftUI Integration
 
 ### SwiftUI View Wrapper
 
+`LimechatWidgetSwiftUIView` wraps the `LimechatWidget` launcher. It has no `open` or `setMessageAttributes`. To open with a message or set attributes, present `LimechatWidgetViewController` as below and call its methods.
+
 ```swift
 import SwiftUI
 import LimechatWidget
 
-struct LimechatWidgetView: UIViewControllerRepresentable {
+struct LimechatWidgetSheet: UIViewControllerRepresentable {
     let configuration: WidgetConfiguration
     @Binding var isPresented: Bool
     var onLoad: (() -> Void)?
@@ -212,7 +193,7 @@ struct LimechatWidgetView: UIViewControllerRepresentable {
     }
     
     class Coordinator: NSObject, LimechatWidgetDelegate {
-        let parent: LimechatWidgetView
+        let parent: LimechatWidgetSheet
         
         init(_ parent: LimechatWidgetView) {
             self.parent = parent
@@ -251,7 +232,7 @@ struct ContentView: View {
             .cornerRadius(8)
         }
         .sheet(isPresented: $showWidget) {
-            LimechatWidgetView(
+            LimechatWidgetSheet(
                 configuration: createConfiguration(),
                 isPresented: $showWidget,
                 onLoad: {
@@ -274,7 +255,6 @@ struct ContentView: View {
         return WidgetConfiguration(
             websiteToken: "MEFFACy4xaovJayhLjSt836h",
             locale: "en",
-            colorScheme: .auto,
             user: user
         )
     }
@@ -289,10 +269,12 @@ struct ContentView: View {
 |-----------|------|-------------|----------|
 | `websiteToken` | String | Your Limechat website token | Yes |
 | `locale` | String | Language locale (en, es, fr, de, it, pt) | No (default: "en") |
-| `colorScheme` | ColorScheme | .light, .dark, or .auto. The widget has no dark mode today, so this has no visible effect | No (default: .auto) |
 | `user` | User? | User details object | No |
 | `customAttributes` | [String: Any]? | Custom data to attach | No |
 | `baseURL` | String | Custom base URL | No (default: production) |
+| `conversationToken` | String? | External conversation token, used instead of the stored one | No |
+| `onConversationTokenChange` | ((String) -> Void)? | External token management. When set, the SDK does not persist tokens | No |
+| `instanceId` | String? | Storage key for the managed token (default: "default") | No |
 | `hideFilePicker` | Bool | Hides the attachment button in the widget | No (default: false) |
 
 ### User Object
@@ -303,22 +285,16 @@ let user = WidgetConfiguration.User(
     email: "john@example.com",  // Optional
     phoneNumber: "+1234567890",  // Optional
     identifier: "user-42",       // Optional - needs identifierHash
-    identifierHash: "hash123"    // Optional - needs identifier
+    identifierHash: "hash123",   // Optional - needs identifier
+    customAttributes: ["plan": "pro"] // Optional
 )
 ```
 
-`set-user` is sent after the page loads only when both `identifier` and `identifierHash` are set. `name`, `email` and `phoneNumber` are passed to the widget on their own and need no hash.
+The verified `set-user` event is sent once per page load, at ready, and only when both `identifier` and `identifierHash` are set. `name`, `email`, `phoneNumber` and the user `customAttributes` are passed to the widget on their own and need no hash. They are not verified: on the customer's first message the server updates the contact, and can merge into an existing contact with the same email or phone. User `customAttributes` go with the customer's next message, they are not set on the contact.
 
-### Color Schemes
+### Conversation Tokens
 
-`colorScheme` is set when you create the configuration. The widget has no dark mode today, so the value has no visible effect.
-
-```swift
-let configuration = WidgetConfiguration(
-    websiteToken: "YOUR_WEBSITE_TOKEN",
-    colorScheme: .auto // .light, .dark or .auto (default)
-)
-```
+By default the SDK stores the conversation token in `UserDefaults` under `instanceId` and loads it on the next `initialize`. To manage it yourself, pass `conversationToken` and `onConversationTokenChange`. The SDK then stores nothing, and `widgetDidChangeConversationToken(_:)` on the delegate also reports each new token. A re-`initialize` reads the token again from the configuration or the store, so pass a new configuration when the user changes.
 
 ### Custom Attributes
 
@@ -339,10 +315,16 @@ let customAttributes: [String: Any] = [
 Initialize the widget with configuration. `initialMessage` or `initialMessageData` (`["content": ..., "submitted_values": ...]`) opens the widget with that message.
 
 #### `open(message: String)` / `open(messageData: [String: Any])`
-Reload the widget and open it with a message. Does nothing before `initialize`.
+Open the widget with a message. Sent now if the widget is ready, otherwise held and sent at ready. A ready widget is never reloaded. If no load is running, `open` starts one. An empty value or a call before `initialize` does nothing. See [Open With a Message](README.md#open-with-a-message).
+
+#### `setMessageAttributes(_ attributes: [String: Any]) -> Bool`
+Attach custom attributes to the customer's next message. Returns `false` for an empty or non-JSON value. See [Message Attributes](README.md#message-attributes). Needs a widget build containing `c8126fb7cd`.
+
+#### `reload()`
+Load the page again. Before `initialize` the view reports a configuration error.
 
 #### `sendMessage(event: String, data: [String: Any])`
-Send custom messages to the widget.
+Send custom messages to the widget. A message sent before the widget is ready is lost.
 
 ```swift
 widgetView.sendMessage(event: "custom-event", data: [
@@ -352,6 +334,8 @@ widgetView.sendMessage(event: "custom-event", data: [
 ```
 
 ### LimechatWidgetViewController
+
+`LimechatWidgetViewController` also has `sendMessage`, `open(message:)`, `open(messageData:)`, `setMessageAttributes` and `reload()`, same as the view.
 
 #### Static Method
 ```swift
@@ -366,6 +350,10 @@ static func present(
 )
 ```
 
+### Launchers
+
+`addWidgetIcon(configuration:delegate:position:customIcon:)` returns a `LimechatWidgetIcon`. `LimechatWidget(configuration:customButton:delegate:)` is a view you place yourself, with an optional custom button. Both present the widget on tap. `LimechatWidget` also has `open(message:messageData:)`, `setMessageAttributes` and `setUnreadCount(_:)`, and `LimechatWidgetIcon` has `setMessageAttributes` and `setUnreadCount(_:)`. The badge shows the count you set. Attributes reach the widget on tap or `open`, and are lost if the user closes before ready.
+
 ### LimechatWidgetDelegate
 
 ```swift
@@ -374,19 +362,24 @@ protocol LimechatWidgetDelegate: AnyObject {
     func widgetDidRequestClose()
     func widgetDidReceiveError(_ error: WidgetError)
     func widgetDidReceiveMessage(_ message: [String: Any])
+    func widgetDidChangeConversationToken(_ token: String) // optional
 }
 ```
+
+`widgetDidLoad` fires once per page load, when the widget can receive messages. A failed page gives `widgetDidReceiveError` and no `widgetDidLoad`. A page that returns 200 but never mounts gives neither.
 
 ### WidgetError
 
 ```swift
 enum WidgetError: LocalizedError {
     case configurationError(String)
-    case networkError(String)
     case webViewError(String)
-    case unknownError(String)
 }
 ```
+
+A main frame http error of 400 or more arrives as `webViewError("HTTP error: <status>")`. A launcher that cannot present the widget or deliver a message reports it on the delegate.
+
+All calls must run on the main thread.
 
 ## Best Practices
 
@@ -396,16 +389,13 @@ The widget view releases its resources when it is deallocated. Keep a single ref
 
 ### 2. Error Handling
 
-Implement comprehensive error handling:
 ```swift
 func widgetDidReceiveError(_ error: WidgetError) {
     switch error {
-    case .networkError(let message):
-        showAlert(title: "Network Error", message: message)
     case .configurationError(let message):
         showAlert(title: "Configuration Error", message: message)
-    default:
-        showAlert(title: "Error", message: error.localizedDescription)
+    case .webViewError(let message):
+        showAlert(title: "Widget Error", message: message)
     }
 }
 ```

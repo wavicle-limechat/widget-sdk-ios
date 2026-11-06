@@ -32,20 +32,20 @@ dependencies: [
 
 ## Quick Start
 
-### Option 1: Floating Widget Icon (Recommended)
+Both options need a `LimechatWidgetDelegate`, see [Delegate Methods](#delegate-methods).
 
-Add a floating widget icon to any view controller - **Just 3 lines of code!**
+### Option 1: Floating Widget Icon (Recommended)
 
 ```swift
 import LimechatWidget
 
-class YourViewController: UIViewController, LimechatWidgetDelegate {
-    
+class YourViewController: UIViewController {
+    private var widgetIcon: LimechatWidgetIcon?
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        // Add floating widget icon - that's it!
-        addWidgetIcon(
+
+        widgetIcon = addWidgetIcon(
             configuration: WidgetConfiguration(
                 websiteToken: "YOUR_WEBSITE_TOKEN",
                 user: WidgetConfiguration.User(name: "John", email: "john@example.com")
@@ -53,42 +53,16 @@ class YourViewController: UIViewController, LimechatWidgetDelegate {
             delegate: self
         )
     }
-    
-    // MARK: - LimechatWidgetDelegate
-    
-    func widgetDidLoad() {
-        print("Widget loaded successfully")
-    }
-    
-    func widgetDidRequestClose() {
-        print("Widget closed")
-    }
-    
-    func widgetDidReceiveError(_ error: WidgetError) {
-        print("Widget error: \(error.localizedDescription)")
-    }
-    
-    func widgetDidReceiveMessage(_ message: [String: Any]) {
-        print("Widget message: \(message)")
-    }
-    
-    func widgetDidReceiveUnreadCount(_ count: Int) {
-        print("Unread count: \(count)")
-    }
 }
 ```
 
 ### Option 2: Manual Presentation
 
-Present the widget manually when needed:
-
 ```swift
 import LimechatWidget
 
-class YourViewController: UIViewController, LimechatWidgetDelegate {
-    
+class YourViewController: UIViewController {
     @IBAction func openSupportTapped(_ sender: Any) {
-        // Present widget manually
         LimechatWidgetViewController.present(
             from: self,
             configuration: WidgetConfiguration(
@@ -98,186 +72,12 @@ class YourViewController: UIViewController, LimechatWidgetDelegate {
             delegate: self
         )
     }
-    
-    // MARK: - LimechatWidgetDelegate
-    
-    func widgetDidLoad() {
-        print("Widget loaded successfully")
-    }
-    
-    func widgetDidRequestClose() {
-        print("Widget closed")
-    }
-    
-    func widgetDidReceiveError(_ error: WidgetError) {
-        print("Widget error: \(error.localizedDescription)")
-    }
-    
-    func widgetDidReceiveMessage(_ message: [String: Any]) {
-        print("Widget message: \(message)")
-    }
-    
-    func widgetDidReceiveUnreadCount(_ count: Int) {
-        print("Unread count: \(count)")
-    }
 }
 ```
 
-### SwiftUI Integration
+### SwiftUI
 
-Complete SwiftUI example with both options:
-
-```swift
-import SwiftUI
-import LimechatWidget
-
-struct ContentView: View {
-    @State private var showWidget = false
-    
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                Text("Limechat Widget Demo")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                
-                VStack(spacing: 15) {
-                    Button("Open Widget Manually") {
-                        showWidget = true
-                    }
-                    .buttonStyle(.borderedProminent)
-                    
-                    Text("Or use the floating icon (UIKit)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-            }
-            .padding()
-        }
-        .sheet(isPresented: $showWidget) {
-            WidgetViewWrapper()
-        }
-    }
-}
-
-struct WidgetViewWrapper: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> LimechatWidgetViewController {
-        let config = WidgetConfiguration(
-            websiteToken: "YOUR_WEBSITE_TOKEN",
-            user: WidgetConfiguration.User(name: "John", email: "john@example.com")
-        )
-        
-        let widgetVC = LimechatWidgetViewController(configuration: config)
-        widgetVC.widgetDelegate = context.coordinator
-        return widgetVC
-    }
-    
-    func updateUIViewController(_ uiViewController: LimechatWidgetViewController, context: Context) {}
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-    
-    class Coordinator: NSObject, LimechatWidgetDelegate {
-        func widgetDidLoad() {
-            print("Widget loaded")
-        }
-        
-        func widgetDidRequestClose() {
-            print("Widget closed")
-        }
-        
-        func widgetDidReceiveError(_ error: WidgetError) {
-            print("Widget error: \(error.localizedDescription)")
-        }
-        
-        func widgetDidReceiveMessage(_ message: [String : Any]) {
-            print("Widget message: \(message)")
-        }
-        
-        func widgetDidReceiveUnreadCount(_ count: Int) {
-            print("Unread count: \(count)")
-        }
-    }
-}
-
-// MARK: - UIKit Example with Floating Icon
-
-class UIKitExampleViewController: UIViewController, LimechatWidgetDelegate {
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        
-        view.backgroundColor = .systemBackground
-        
-        // Add floating widget icon - just one line!
-        addWidgetIcon(
-            configuration: WidgetConfiguration(
-                websiteToken: "YOUR_WEBSITE_TOKEN",
-                user: WidgetConfiguration.User(name: "John", email: "john@example.com")
-            ),
-            delegate: self
-        )
-        
-        // Add some UI
-        let titleLabel = UILabel()
-        titleLabel.text = "Limechat Widget Demo"
-        titleLabel.font = .largeTitle
-        titleLabel.textAlignment = .center
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        
-        let descriptionLabel = UILabel()
-        descriptionLabel.text = "Tap the floating icon to open the widget"
-        descriptionLabel.font = .body
-        descriptionLabel.textAlignment = .center
-        descriptionLabel.numberOfLines = 0
-        descriptionLabel.translatesAutoresizingMaskIntoConstraints = false
-        
-        view.addSubview(titleLabel)
-        view.addSubview(descriptionLabel)
-        
-        NSLayoutConstraint.activate([
-            titleLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            titleLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -50),
-            titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            
-            descriptionLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            descriptionLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 20),
-            descriptionLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            descriptionLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20)
-        ])
-    }
-    
-    // MARK: - LimechatWidgetDelegate
-    
-    func widgetDidLoad() {
-        print("Widget loaded successfully")
-    }
-    
-    func widgetDidRequestClose() {
-        print("Widget closed")
-    }
-    
-    func widgetDidReceiveError(_ error: WidgetError) {
-        print("Widget error: \(error.localizedDescription)")
-    }
-    
-    func widgetDidReceiveMessage(_ message: [String: Any]) {
-        print("Widget message: \(message)")
-    }
-    
-    func widgetDidReceiveUnreadCount(_ count: Int) {
-        print("Unread count: \(count)")
-    }
-}
-
-#Preview {
-    ContentView()
-}
-```
+Present `LimechatWidgetViewController` from a `UIViewControllerRepresentable`, see [INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md#swiftui-integration). `LimechatWidgetSwiftUIView` wraps the `LimechatWidget` launcher. It has no `open` or `setMessageAttributes`.
 
 ## Configuration
 
@@ -287,16 +87,11 @@ class UIKitExampleViewController: UIViewController, LimechatWidgetDelegate {
 let configuration = WidgetConfiguration(
     websiteToken: "YOUR_WEBSITE_TOKEN",  // Required
     locale: "en",                        // Optional, defaults to "en"
-    colorScheme: .auto,                  // Optional, defaults to .auto
     user: user,                          // Optional
     customAttributes: ["key": "value"],  // Optional
     hideFilePicker: false                // Optional, hides the attachment button
 )
 ```
-
-### Color Schemes
-
-The widget has no dark mode today, so `colorScheme` (`.light`, `.dark`, `.auto`) has no visible effect.
 
 ### User Information
 
@@ -306,11 +101,14 @@ let user = WidgetConfiguration.User(
     email: "john@example.com",  // Optional
     phoneNumber: "+1234567890", // Optional
     identifier: "user-42",      // Optional, needs identifierHash
-    identifierHash: "hash123"   // Optional, HMAC-SHA256(hmac_token, identifier) from your server
+    identifierHash: "hash123",  // Optional, HMAC-SHA256(hmac_token, identifier) from your server
+    customAttributes: ["plan": "pro"] // Optional, see below
 )
 ```
 
-`set-user` is sent after load only when both `identifier` and `identifierHash` are set.
+`name`, `email`, `phoneNumber` and `customAttributes` reach the widget on their own and need no hash. They are not verified. On the customer's first message the server updates the contact, and can merge into an existing contact with the same email or phone. `customAttributes` on the user go with the customer's next message, they are not set on the contact. Pass `identifier` and `identifierHash` together if you use identity validation.
+
+The verified `set-user` event is sent once per page load, at ready, and only when both `identifier` and `identifierHash` are set.
 
 ### Open With a Message
 
@@ -318,13 +116,45 @@ let user = WidgetConfiguration.User(
 // on first load
 LimechatWidgetViewController.present(from: self, configuration: configuration, initialMessage: "Hi")
 
-// later: reloads the widget with the message
+// later, on a view or view controller you hold
 widgetView.open(message: "Hi")
 widgetView.open(messageData: ["content": "Hi", "submitted_values": ["plan": "pro"]])
 
 // from the launcher view (`LimechatWidget`): presents the widget with the message
 launcher.open(message: "Hi")
 ```
+
+- if the widget is ready, the message is sent now. A ready widget is never reloaded.
+- if it is not ready, the message is held and sent at ready. If no load is running, `open` starts one, so it also retries after a failed load.
+- an empty message does nothing. `open` before `initialize` does nothing.
+- only the latest held message is kept. A held message can go out at a much later load. To drop it, call `initialize(with:)` again or close the widget.
+- `sendMessage(event:data:)` before ready is lost. Only `open` and `setMessageAttributes` wait.
+- if the widget web process is killed (for example under memory pressure), ready resets. The next `open` or `reload()` loads the page again.
+- on `LimechatWidget`, a message is not delivered when another view controller is already presented. The delegate gets an error.
+
+### Message Attributes
+
+```swift
+widgetView.setMessageAttributes(["order_id": "A-1042", "source": "checkout"])
+// same on LimechatWidgetViewController, LimechatWidget and LimechatWidgetIcon
+```
+
+- attached as `custom_attributes` to the customer's next message only. Repeat calls merge, later keys win. They are message attributes, not contact attributes.
+- call it at any time. They are held until the widget is ready, and sent before an `open` message, so the first message carries them.
+- on `LimechatWidget` and `LimechatWidgetIcon`, attributes reach the widget when the user taps the icon or you call `open`.
+- returns `false` for an empty dictionary or a value that is not valid JSON, such as `Date` or `Double.nan`. Pass JSON values.
+- the widget clears them once they are sent. If the send fails, the delegate gets an error and they are not restored.
+- attributes already sent are gone with the page on a reload. Attributes still held stay held. On the launchers, if the user closes the widget before ready, held attributes are lost: set them again.
+- call from the main thread.
+- needs a widget build containing `c8126fb7cd` (pr #120, 2026-09-25). Older builds ignore it silently.
+
+### Reload
+
+`reload()` loads the page again on the view and the view controller. Held attributes and open messages are kept and sent at the next ready. Before `initialize(with:)`, the view reports a configuration error.
+
+### Callbacks
+
+`widgetDidLoad` fires once per page load, when the widget can receive messages. A failed page gives `widgetDidReceiveError` and no `widgetDidLoad`. A page that returns 200 but never mounts gives neither.
 
 ### Floating Widget Icon Customization
 
@@ -363,40 +193,35 @@ icon.setUnreadCount(5)
 
 ## Delegate Methods
 
-Implement `LimechatWidgetDelegate` to handle widget events. Keep the icon returned by `addWidgetIcon` so you can update its unread count:
-
-```swift
-private var widgetIcon: LimechatWidgetIcon?
-
-// in viewDidLoad
-widgetIcon = addWidgetIcon(configuration: configuration, delegate: self)
-```
+Implement `LimechatWidgetDelegate` to handle widget events:
 
 ```swift
 extension YourViewController: LimechatWidgetDelegate {
     func widgetDidLoad() {
-        // Widget finished loading
+        // Widget is ready to receive messages
     }
-    
+
     func widgetDidRequestClose() {
         // Widget requested to close
     }
-    
+
     func widgetDidReceiveError(_ error: WidgetError) {
-        // Widget encountered an error
+        // Configuration, web view or http error
+        print("Widget error: \(error.localizedDescription)")
     }
-    
+
     func widgetDidReceiveMessage(_ message: [String: Any]) {
         // Widget sent a message
     }
-    
-    func widgetDidReceiveUnreadCount(_ count: Int) {
-        // The widget does not send this today.
-        // Drive your floating icon from your own count: widgetIcon?.setUnreadCount(count)
-        widgetIcon?.setUnreadCount(count)
-    }
+
+    // optional
+    func widgetDidChangeConversationToken(_ token: String) {}
 }
 ```
+
+`WidgetError` has two cases, `configurationError` and `webViewError`. A main frame http error of 400 or more arrives as `webViewError("HTTP error: <status>")`. If you switch over `WidgetError`, handle both.
+
+The floating icon badge is driven by your own count: keep the icon returned by `addWidgetIcon` and call `widgetIcon?.setUnreadCount(count)`.
 
 ## Requirements
 
