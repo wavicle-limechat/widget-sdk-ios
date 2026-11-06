@@ -6,7 +6,6 @@ Native iOS SDK for integrating Limechat customer support widget into your iOS ap
 
 - 🎯 Native Swift implementation
 - 📱 Full-screen modal presentation
-- 🎨 Light/Dark/Auto theme support
 - 🔒 Secure user identification
 - 🌍 Multi-language support
 - 📦 Swift Package Manager support
@@ -327,9 +326,7 @@ let configuration = WidgetConfiguration(
 
 ### Color Schemes
 
-- `.light` - Always use light theme
-- `.dark` - Always use dark theme  
-- `.auto` - Automatically match system theme (default)
+The widget has no dark mode today, so `colorScheme` (`.light`, `.dark`, `.auto`) has no visible effect.
 
 ### User Information
 
@@ -424,8 +421,8 @@ extension YourViewController: LimechatWidgetDelegate {
     }
     
     func widgetDidReceiveUnreadCount(_ count: Int) {
-        // Widget updated unread count
-        // Update your floating icon if using one
+        // The widget does not send this today.
+        // Drive your floating icon from your own count: widgetIcon?.setUnreadCount(count)
         widgetIcon?.setUnreadCount(count)
     }
 }

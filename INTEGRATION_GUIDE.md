@@ -489,16 +489,7 @@ let user = WidgetConfiguration.User(
 
 ### 4. Theme Handling
 
-Respond to theme changes:
-```swift
-override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-    super.traitCollectionDidChange(previousTraitCollection)
-    
-    if traitCollection.userInterfaceStyle != previousTraitCollection?.userInterfaceStyle {
-        // Reinitialize widget with new color scheme if needed
-    }
-}
-```
+The widget has no dark mode today. `colorScheme` has no visible effect, so there is nothing to update when the system theme changes.
 
 ### 5. Localization
 
