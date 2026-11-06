@@ -6,7 +6,7 @@ public class LimechatWidgetViewController: UIViewController {
     // MARK: - Properties
     
     private var widgetView: LimechatWidgetView!
-    private var configuration: WidgetConfiguration
+    let configuration: WidgetConfiguration
     private var initialMessage: String?
     private var initialMessageData: [String: Any]?
     

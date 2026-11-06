@@ -183,7 +183,9 @@ public class LimechatWidget: UIView {
     /// Present the widget, optionally with a message or a `{content, submitted_values}` payload
     public func open(message: String? = nil, messageData: [String: Any]? = nil) {
         guard let viewController = findViewController() else { return }
-        if let presented = viewController.presentedViewController as? LimechatWidgetViewController {
+        if let presented = viewController.presentedViewController as? LimechatWidgetViewController,
+           presented.configuration.websiteToken == configuration.websiteToken,
+           presented.configuration.instanceId == configuration.instanceId {
             if let messageData = messageData {
                 presented.open(messageData: messageData)
             } else if let message = message {

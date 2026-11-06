@@ -234,6 +234,45 @@ final class LauncherTests: XCTestCase {
         window.isHidden = true
     }
 
+    func testLimechatWidgetOpenWhileOpenSendsMessageDataToThePresentedWidget() {
+        let host = UIViewController()
+        let window = UIWindow(frame: UIScreen.main.bounds)
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        let w = LimechatWidget(configuration: config)
+        host.view.addSubview(w)
+        w.open(message: "first")
+        let first = host.presentedViewController
+        w.open(messageData: ["content": "payload"])
+        XCTAssertTrue(host.presentedViewController === first)
+        let presented = host.presentedViewController as? LimechatWidgetViewController
+        let url = presented?.view.allSubviews(of: LimechatWidgetView.self).first?.testWebView.url
+        XCTAssertTrue(url?.absoluteString.contains("lc_open_payload") == true, "\(String(describing: url))")
+        XCTAssertTrue(url?.absoluteString.contains("payload") == true, "\(String(describing: url))")
+        window.isHidden = true
+    }
+
+    func testLimechatWidgetOpenWhileAnotherLauncherIsOpenDoesNotSendTheMessageToIt() {
+        let host = UIViewController()
+        let window = UIWindow(frame: UIScreen.main.bounds)
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        let a = LimechatWidget(configuration: WidgetConfiguration(websiteToken: "tokenA"))
+        let b = LimechatWidget(configuration: WidgetConfiguration(websiteToken: "tokenB"))
+        host.view.addSubview(a)
+        host.view.addSubview(b)
+        a.open(message: "for A")
+        let first = host.presentedViewController
+        b.open(message: "for B")
+        b.open(messageData: ["content": "for B"])
+        XCTAssertTrue(host.presentedViewController === first)
+        let presented = host.presentedViewController as? LimechatWidgetViewController
+        let url = presented?.view.allSubviews(of: LimechatWidgetView.self).first?.testWebView.url
+        XCTAssertTrue(url?.absoluteString.contains("website_token=tokenA") == true, "\(String(describing: url))")
+        XCTAssertFalse(url?.absoluteString.contains("for%20B") == true, "\(String(describing: url))")
+        window.isHidden = true
+    }
+
     func testLimechatWidgetOpenWithoutViewControllerIsSilent() {
         let w = LimechatWidget(configuration: config)
         w.open(message: "hi")
