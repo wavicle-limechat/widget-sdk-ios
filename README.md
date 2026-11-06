@@ -145,7 +145,7 @@ widgetView.setMessageAttributes(["order_id": "A-1042", "source": "checkout"])
 - on `LimechatWidget` and `LimechatWidgetIcon`, attributes reach the widget when the user taps the icon or you call `open`.
 - returns `false` for an empty dictionary or a value that is not valid JSON, such as `Date` or `Double.nan`. Pass JSON values.
 - after the customer's message is sent, the widget clears them. If that message fails, the widget keeps them for the next one. Attributes already sent to the widget are lost on a page reload. Attributes still held are kept.
-- on the launchers, attributes that were not sent yet when the user closes the widget stay held and go out the next time it opens. Held open messages are not kept.
+- on the launchers, attributes that were not sent yet when the user closes the widget stay held and go out the next time it opens. Held open messages are not kept. Attributes already sent are lost when the widget closes, since each open is a new page. Set them again.
 - call from the main thread.
 - needs a widget build containing `c8126fb7cd` (pr #120, 2026-09-25). Older builds ignore it silently.
 

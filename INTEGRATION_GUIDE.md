@@ -352,7 +352,7 @@ static func present(
 
 ### Launchers
 
-`addWidgetIcon(configuration:delegate:position:customIcon:)` returns a `LimechatWidgetIcon`. `LimechatWidget(configuration:customButton:delegate:)` is a view you place yourself, with an optional custom button. Both present the widget on tap. `LimechatWidget` also has `open(message:messageData:)`, `setMessageAttributes` and `setUnreadCount(_:)`, and `LimechatWidgetIcon` has `setMessageAttributes` and `setUnreadCount(_:)`. The badge shows the count you set. Attributes reach the widget on tap or `open`. Attributes not sent yet when the user closes the widget stay held for the next open.
+`addWidgetIcon(configuration:delegate:position:customIcon:)` returns a `LimechatWidgetIcon`. `LimechatWidget(configuration:customButton:delegate:)` is a view you place yourself, with an optional custom button. Both present the widget on tap. `LimechatWidget` also has `open(message:messageData:)`, `setMessageAttributes` and `setUnreadCount(_:)`, and `LimechatWidgetIcon` has `setMessageAttributes` and `setUnreadCount(_:)`. The badge shows the count you set. Attributes reach the widget on tap or `open`. Attributes not sent yet when the user closes the widget stay held for the next open. Attributes already sent are lost when the widget closes, since each open is a new page. Set them again.
 
 ### LimechatWidgetDelegate
 
