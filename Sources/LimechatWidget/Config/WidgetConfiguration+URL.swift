@@ -15,10 +15,8 @@ extension WidgetConfiguration {
         
         var queryItems = [
             URLQueryItem(name: "website_token", value: websiteToken),
-            URLQueryItem(name: "platform", value: "ios"),
             URLQueryItem(name: "locale", value: locale),
-            URLQueryItem(name: "color_scheme", value: resolvedColorScheme.rawValue),
-            URLQueryItem(name: "sdk_version", value: "1.0.0")
+            URLQueryItem(name: "color_scheme", value: resolvedColorScheme.rawValue)
         ]
         
         if let customAttributes = customAttributes,

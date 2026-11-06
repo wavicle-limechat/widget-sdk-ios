@@ -26,21 +26,21 @@ final class URLTests: XCTestCase {
     func testMinimalConfigProducesExactURL() {
         let c = WidgetConfiguration(websiteToken: "tok", colorScheme: .light)
         XCTAssertEqual(c.widgetURL?.absoluteString,
-                       "https://app.limechat.ai/widget?website_token=tok&platform=ios&locale=en&color_scheme=light&sdk_version=1.0.0")
+                       "https://app.limechat.ai/widget?website_token=tok&locale=en&color_scheme=light")
     }
 
-    func testFixedParamOrderIsTokenPlatformLocaleColorSchemeSdkVersion() {
+    func testFixedParamOrderIsTokenLocaleColorScheme() {
         let c = WidgetConfiguration(websiteToken: "tok", locale: "hi", colorScheme: .dark)
         XCTAssertEqual(items(c.widgetURL).map(\.name),
-                       ["website_token", "platform", "locale", "color_scheme", "sdk_version"])
+                       ["website_token", "locale", "color_scheme"])
         XCTAssertEqual(value("locale", c.widgetURL), "hi")
         XCTAssertEqual(value("color_scheme", c.widgetURL), "dark")
     }
 
-    func testPinsCurrentBehaviour_sendsPlatformIosAndHardcodedSdkVersion100() {
+    func testURLHasNoPlatformOrSdkVersion() {
         let url = WidgetConfiguration(websiteToken: "tok").widgetURL
-        XCTAssertEqual(value("platform", url), "ios")
-        XCTAssertEqual(value("sdk_version", url), "1.0.0") // tag is v0.0.1
+        XCTAssertNil(value("platform", url))
+        XCTAssertNil(value("sdk_version", url))
     }
 
     func testPinsCurrentBehaviour_autoColorSchemeResolvesFromUIScreenAtBuildTime() {
@@ -62,31 +62,31 @@ final class URLTests: XCTestCase {
     func testCustomBaseURLKeepsSchemeHostPort() {
         let c = WidgetConfiguration(websiteToken: "t", colorScheme: .light, baseURL: "http://localhost:8787")
         XCTAssertEqual(c.widgetURL?.absoluteString,
-                       "http://localhost:8787/widget?website_token=t&platform=ios&locale=en&color_scheme=light&sdk_version=1.0.0")
+                       "http://localhost:8787/widget?website_token=t&locale=en&color_scheme=light")
     }
 
     func testPinsCurrentBehaviour_baseURLPathIsReplacedNotAppended() {
         let c = WidgetConfiguration(websiteToken: "t", colorScheme: .light, baseURL: "http://localhost:8787/foo/")
         XCTAssertEqual(c.widgetURL?.absoluteString,
-                       "http://localhost:8787/widget?website_token=t&platform=ios&locale=en&color_scheme=light&sdk_version=1.0.0")
+                       "http://localhost:8787/widget?website_token=t&locale=en&color_scheme=light")
     }
 
     func testPinsCurrentBehaviour_baseURLWithExistingQueryIsDropped() {
         let c = WidgetConfiguration(websiteToken: "t", colorScheme: .light, baseURL: "https://x.test?a=1")
         XCTAssertEqual(c.widgetURL?.absoluteString,
-                       "https://x.test/widget?website_token=t&platform=ios&locale=en&color_scheme=light&sdk_version=1.0.0")
+                       "https://x.test/widget?website_token=t&locale=en&color_scheme=light")
     }
 
     func testPinsCurrentBehaviour_invalidBaseURLYieldsRelativeURLNotNil() {
         let c = WidgetConfiguration(websiteToken: "t", colorScheme: .light, baseURL: "not a url")
         XCTAssertEqual(c.widgetURL?.absoluteString,
-                       "/widget?website_token=t&platform=ios&locale=en&color_scheme=light&sdk_version=1.0.0")
+                       "/widget?website_token=t&locale=en&color_scheme=light")
     }
 
     func testPinsCurrentBehaviour_schemelessBaseURLIsMangled() {
         let c = WidgetConfiguration(websiteToken: "t", colorScheme: .light, baseURL: "localhost:8787")
         XCTAssertEqual(c.widgetURL?.absoluteString,
-                       "localhost:/widget?website_token=t&platform=ios&locale=en&color_scheme=light&sdk_version=1.0.0")
+                       "localhost:/widget?website_token=t&locale=en&color_scheme=light")
     }
 
     // MARK: user
@@ -97,14 +97,14 @@ final class URLTests: XCTestCase {
         XCTAssertNil(value("name", url))
         XCTAssertNil(value("email", url))
         XCTAssertNil(value("phone_number", url))
-        XCTAssertEqual(items(url).map(\.name), ["website_token", "platform", "locale", "color_scheme", "sdk_version"])
+        XCTAssertEqual(items(url).map(\.name), ["website_token", "locale", "color_scheme"])
     }
 
     // MARK: custom attributes
 
     func testCustomAttributesAreJSONEncoded() {
         let s = WidgetConfiguration(websiteToken: "t", colorScheme: .light, customAttributes: ["plan": "pro"]).widgetURL!.absoluteString
-        XCTAssertEqual(s, "https://app.limechat.ai/widget?website_token=t&platform=ios&locale=en&color_scheme=light&sdk_version=1.0.0&custom_attributes=%7B%22plan%22:%22pro%22%7D")
+        XCTAssertEqual(s, "https://app.limechat.ai/widget?website_token=t&locale=en&color_scheme=light&custom_attributes=%7B%22plan%22:%22pro%22%7D")
     }
 
     func testEmptyCustomAttributesAreOmitted() {
@@ -150,7 +150,7 @@ final class URLTests: XCTestCase {
 
     func testTokenAndLocaleSpecialCharsAndUnicode() {
         let s = WidgetConfiguration(websiteToken: "a b&c", locale: "pt-BR", colorScheme: .light).widgetURL!.absoluteString
-        XCTAssertEqual(s, "https://app.limechat.ai/widget?website_token=a%20b%26c&platform=ios&locale=pt-BR&color_scheme=light&sdk_version=1.0.0")
+        XCTAssertEqual(s, "https://app.limechat.ai/widget?website_token=a%20b%26c&locale=pt-BR&color_scheme=light")
         let u = WidgetConfiguration(websiteToken: "t", locale: "हिं", colorScheme: .light).widgetURL
         XCTAssertEqual(value("locale", u), "हिं")
     }
@@ -166,7 +166,7 @@ final class URLTests: XCTestCase {
                                       customAttributes: ["k+": "v+"]).widgetURL
         let s = url!.absoluteString
         XCTAssertFalse(s.contains("+"), s)
-        XCTAssertEqual(Array(items(url).map(\.name).prefix(5)), ["website_token", "platform", "locale", "color_scheme", "sdk_version"])
+        XCTAssertEqual(Array(items(url).map(\.name).prefix(3)), ["website_token", "locale", "color_scheme"])
         XCTAssertEqual(value("website_token", url), "t+1")
         XCTAssertEqual(value("locale", url), "en+")
         XCTAssertEqual(value("custom_attributes", url), #"{"k+":"v+"}"#)
@@ -175,7 +175,7 @@ final class URLTests: XCTestCase {
     func testURLWithoutPlusIsByteIdenticalToBefore() {
         let s = WidgetConfiguration(websiteToken: "a b&c", locale: "pt-BR", colorScheme: .light,
                                     customAttributes: ["s": "a&b=c%d?f#g"]).widgetURL!.absoluteString
-        XCTAssertEqual(s, "https://app.limechat.ai/widget?website_token=a%20b%26c&platform=ios&locale=pt-BR&color_scheme=light&sdk_version=1.0.0&custom_attributes=%7B%22s%22:%22a%26b%3Dc%25d?f%23g%22%7D")
+        XCTAssertEqual(s, "https://app.limechat.ai/widget?website_token=a%20b%26c&locale=pt-BR&color_scheme=light&custom_attributes=%7B%22s%22:%22a%26b%3Dc%25d?f%23g%22%7D")
     }
 
     // MARK: cw_conversation
@@ -183,7 +183,7 @@ final class URLTests: XCTestCase {
     func testConversationTokenIsAppendedLastAsCwConversation() {
         let c = WidgetConfiguration(websiteToken: "t", colorScheme: .light, customAttributes: ["a": 1], conversationToken: "jwt")
         XCTAssertEqual(c.widgetURL?.absoluteString,
-                       "https://app.limechat.ai/widget?website_token=t&platform=ios&locale=en&color_scheme=light&sdk_version=1.0.0&custom_attributes=%7B%22a%22:1%7D&cw_conversation=jwt")
+                       "https://app.limechat.ai/widget?website_token=t&locale=en&color_scheme=light&custom_attributes=%7B%22a%22:1%7D&cw_conversation=jwt")
     }
 
     func testCwConversationArgumentWinsOverConfigToken() {
