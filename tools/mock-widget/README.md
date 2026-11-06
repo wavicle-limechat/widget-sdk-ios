@@ -2,7 +2,7 @@
 
 local stand-in for the limechat web widget page (`/widget`) and `/widget_config`, so the
 sdk webview bridge can be tested without deploying anything. python3 stdlib only.
-this folder is identical in the rn, ios and android repos.
+this folder is identical in the android and ios repos.
 
 ## run
 
