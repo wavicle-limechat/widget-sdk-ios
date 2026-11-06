@@ -35,51 +35,15 @@ After publishing, users should be able to add your package in Xcode:
 
 1. **In Xcode:**
    - File → Add Package Dependencies
-   - Enter: `https://github.com/limechat/limechat-ios-sdk.git`
+   - Enter: `https://github.com/wavicle-limechat/widget-sdk-ios.git`
    - Select version: `1.0.0`
 
 2. **Or in Package.swift:**
    ```swift
    dependencies: [
-       .package(url: "https://github.com/limechat/limechat-ios-sdk.git", from: "1.0.0")
+       .package(url: "https://github.com/wavicle-limechat/widget-sdk-ios.git", from: "1.0.0")
    ]
    ```
-
-## Publishing to CocoaPods (Optional)
-
-If you want to support CocoaPods as well:
-
-### 1. Create Podspec File
-
-Create `LimechatWidget.podspec` in the root directory:
-
-```ruby
-Pod::Spec.new do |spec|
-  spec.name         = "LimechatWidget"
-  spec.version      = "1.0.0"
-  spec.summary      = "Native iOS SDK for integrating Limechat customer support widget"
-  spec.description  = "A native Swift SDK that provides a full-screen modal presentation of the Limechat customer support widget in iOS applications."
-  
-  spec.homepage     = "https://github.com/limechat/limechat-ios-sdk"
-  spec.license      = { :type => "MIT", :file => "LICENSE" }
-  spec.author       = { "Limechat" => "support@limechat.ai" }
-  spec.platform     = :ios, "13.0"
-  spec.source       = { :git => "https://github.com/limechat/limechat-ios-sdk.git", :tag => "#{spec.version}" }
-  
-  spec.source_files = "Sources/LimechatWidget/**/*"
-  spec.swift_version = "5.7"
-end
-```
-
-### 2. Validate and Publish
-
-```bash
-# Validate the podspec
-pod spec lint LimechatWidget.podspec
-
-# Push to CocoaPods trunk
-pod trunk push LimechatWidget.podspec
-```
 
 ## Version Management
 
@@ -97,7 +61,6 @@ Follow [Semantic Versioning](https://semver.org/) for version numbers:
 1. **Update version numbers:**
    - Update `CHANGELOG.md`
    - Update version in `Package.swift` (if needed)
-   - Update version in `LimechatWidget.podspec` (if using CocoaPods)
 
 2. **Create git tag:**
    ```bash

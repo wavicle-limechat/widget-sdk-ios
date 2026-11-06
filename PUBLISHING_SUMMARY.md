@@ -58,13 +58,13 @@ Users can now install your SDK:
 
 **In Xcode:**
 1. File → Add Package Dependencies
-2. URL: `https://github.com/limechat/limechat-ios-sdk.git`
+2. URL: `https://github.com/wavicle-limechat/widget-sdk-ios.git`
 3. Version: `1.0.0`
 
 **In Package.swift:**
 ```swift
 dependencies: [
-    .package(url: "https://github.com/limechat/limechat-ios-sdk.git", from: "1.0.0")
+    .package(url: "https://github.com/wavicle-limechat/widget-sdk-ios.git", from: "1.0.0")
 ]
 ```
 
@@ -79,7 +79,6 @@ dependencies: [
 | `scripts/release.sh` | Automated release script |
 | `Package.swift` | Swift Package Manager configuration |
 | `LimechatWidgetIcon.swift` | Floating widget icon component |
-| `Example/main.swift` | Updated examples with floating icon |
 
 ## 🎯 Key Features of Your SDK
 

@@ -5,6 +5,20 @@ All notable changes to the Limechat iOS SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- `sendMessage` now posts `chatwoot-widget:` + json, the only form the widget reads. it was a silent no-op before.
+- the widget bridge listens on the `limechat` handler only. `limechatNative`, string bodies, the `close` event alias and `limechat://close` are removed, the widget never sent them.
+- user `name`, `email` and `phoneNumber` are passed through `window.chatwootWebChannel.rnUser` and no longer sit in the widget url. hosts that pass a user now update the contact on the first message.
+- a delegate set on `LimechatWidget` after init is passed to the default icon.
+
+### Added
+- `open(message:)` and `open(messageData:)` on the widget view and view controller, plus `initialMessage` and `initialMessageData` on `initialize`, the view controller init and `present`.
+- `WidgetConfiguration.hideFilePicker`.
+- `WidgetConfiguration.User.identifier` and `identifierHash`. `set-user` is sent after load only when both are set.
+- the launcher icon uses `widgetIconMobile` from `widget_config`, falling back to the default icon on any failure.
+
 ## [0.0.1] - 2025-08-20
 
 ### Added

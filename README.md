@@ -19,7 +19,7 @@ Native iOS SDK for integrating Limechat customer support widget into your iOS ap
 ### Swift Package Manager
 
 1. In Xcode, go to **File** → **Add Package Dependencies**
-2. Enter the repository URL: `https://github.com/limechat/limechat-ios-sdk.git`
+2. Enter the repository URL: `https://github.com/wavicle-limechat/widget-sdk-ios.git`
 3. Select the version you want to use
 4. Click **Add Package**
 
@@ -27,7 +27,7 @@ Or add it to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/limechat/limechat-ios-sdk.git", from: "1.0.0")
+    .package(url: "https://github.com/wavicle-limechat/widget-sdk-ios.git", from: "1.0.0")
 ]
 ```
 
@@ -320,7 +320,8 @@ let configuration = WidgetConfiguration(
     locale: "en",                        // Optional, defaults to "en"
     colorScheme: .auto,                  // Optional, defaults to .auto
     user: user,                          // Optional
-    customAttributes: ["key": "value"]   // Optional
+    customAttributes: ["key": "value"],  // Optional
+    hideFilePicker: false                // Optional, hides the attachment button
 )
 ```
 
@@ -336,8 +337,23 @@ let configuration = WidgetConfiguration(
 let user = WidgetConfiguration.User(
     name: "John Doe",           // Optional
     email: "john@example.com",  // Optional
-    phoneNumber: "+1234567890"  // Optional
+    phoneNumber: "+1234567890", // Optional
+    identifier: "user-42",      // Optional, needs identifierHash
+    identifierHash: "hash123"   // Optional, HMAC-SHA256(hmac_token, identifier) from your server
 )
+```
+
+`set-user` is sent after load only when both `identifier` and `identifierHash` are set.
+
+### Open With a Message
+
+```swift
+// on first load
+LimechatWidgetViewController.present(from: self, configuration: configuration, initialMessage: "Hi")
+
+// later: reloads the widget with the message
+widgetView.open(message: "Hi")
+widgetView.open(messageData: ["content": "Hi", "submitted_values": ["plan": "pro"]])
 ```
 
 ### Floating Widget Icon Customization
@@ -360,7 +376,6 @@ let icon = addWidgetIcon(
 )
 
 // Customize appearance
-icon.iconSize = 70
 icon.cornerRadius = 35
 icon.backgroundColor = .systemGreen
 icon.tintColor = .white
@@ -378,7 +393,14 @@ icon.setUnreadCount(5)
 
 ## Delegate Methods
 
-Implement `LimechatWidgetDelegate` to handle widget events:
+Implement `LimechatWidgetDelegate` to handle widget events. Keep the icon returned by `addWidgetIcon` so you can update its unread count:
+
+```swift
+private var widgetIcon: LimechatWidgetIcon?
+
+// in viewDidLoad
+widgetIcon = addWidgetIcon(configuration: configuration, delegate: self)
+```
 
 ```swift
 extension YourViewController: LimechatWidgetDelegate {
@@ -419,5 +441,5 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## Support
 
 - 📧 Email: support@limechat.ai
-- 🐛 Issues: [GitHub Issues](https://github.com/limechat/limechat-ios-sdk/issues)
+- 🐛 Issues: [GitHub Issues](https://github.com/wavicle-limechat/widget-sdk-ios/issues)
 - 📚 Documentation: [docs.limechat.ai](https://docs.limechat.ai)

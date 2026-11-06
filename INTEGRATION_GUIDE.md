@@ -24,7 +24,7 @@
 #### Using Xcode
 
 1. In Xcode, select **File → Add Packages**
-2. Enter the repository URL: `https://github.com/limechat/limechat-ios-sdk.git`
+2. Enter the repository URL: `https://github.com/wavicle-limechat/widget-sdk-ios.git`
 3. Select version rule (e.g., "Up to Next Major Version")
 4. Click **Add Package**
 
@@ -34,21 +34,8 @@ Add the dependency to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/limechat/limechat-ios-sdk.git", from: "1.0.0")
+    .package(url: "https://github.com/wavicle-limechat/widget-sdk-ios.git", from: "1.0.0")
 ]
-```
-
-### CocoaPods
-
-Add to your `Podfile`:
-
-```ruby
-pod 'LimechatWidget', '~> 1.0.0'
-```
-
-Then run:
-```bash
-pod install
 ```
 
 ## Basic Integration
@@ -89,7 +76,8 @@ class ViewController: UIViewController {
             name: "John Doe",
             email: "john.doe@example.com",
             phoneNumber: "+1234567890",
-            identifierHash: nil // Optional for secure identification
+            identifier: nil,     // Optional. Set together with identifierHash
+            identifierHash: nil  // Optional. HMAC-SHA256(hmac_token, identifier) from your server
         )
         
         let configuration = WidgetConfiguration(
@@ -302,10 +290,11 @@ struct ContentView: View {
 |-----------|------|-------------|----------|
 | `websiteToken` | String | Your Limechat website token | Yes |
 | `locale` | String | Language locale (en, es, fr, de, it, pt) | No (default: "en") |
-| `colorScheme` | ColorScheme | .light, .dark, or .auto | No (default: .light) |
+| `colorScheme` | ColorScheme | .light, .dark, or .auto. The widget has no dark mode today, so this has no visible effect | No (default: .auto) |
 | `user` | User? | User details object | No |
 | `customAttributes` | [String: Any]? | Custom data to attach | No |
 | `baseURL` | String | Custom base URL | No (default: production) |
+| `hideFilePicker` | Bool | Hides the attachment button in the widget | No (default: false) |
 
 ### User Object
 
@@ -314,21 +303,22 @@ let user = WidgetConfiguration.User(
     name: "John Doe",           // Optional
     email: "john@example.com",  // Optional
     phoneNumber: "+1234567890",  // Optional
-    identifierHash: "hash123"    // Optional - for secure identification
+    identifier: "user-42",       // Optional - needs identifierHash
+    identifierHash: "hash123"    // Optional - needs identifier
 )
 ```
 
+`set-user` is sent after the page loads only when both `identifier` and `identifierHash` are set. `name`, `email` and `phoneNumber` are passed to the widget on their own and need no hash.
+
 ### Color Schemes
 
+`colorScheme` is set when you create the configuration. The widget has no dark mode today, so the value has no visible effect.
+
 ```swift
-// Light theme
-configuration.colorScheme = .light
-
-// Dark theme
-configuration.colorScheme = .dark
-
-// Follow system theme (iOS 13+)
-configuration.colorScheme = .auto
+let configuration = WidgetConfiguration(
+    websiteToken: "YOUR_WEBSITE_TOKEN",
+    colorScheme: .auto // .light, .dark or .auto (default)
+)
 ```
 
 ### Custom Attributes
@@ -346,8 +336,11 @@ let customAttributes: [String: Any] = [
 
 ### LimechatWidgetView Methods
 
-#### `initialize(with configuration: WidgetConfiguration)`
-Initialize the widget with configuration.
+#### `initialize(with configuration: WidgetConfiguration, initialMessage: String? = nil, initialMessageData: [String: Any]? = nil)`
+Initialize the widget with configuration. `initialMessage` or `initialMessageData` (`["content": ..., "submitted_values": ...]`) opens the widget with that message.
+
+#### `open(message: String)` / `open(messageData: [String: Any])`
+Reload the widget and open it with a message. Does nothing before `initialize`.
 
 #### `sendMessage(event: String, data: [String: Any])`
 Send custom messages to the widget.
@@ -359,12 +352,6 @@ widgetView.sendMessage(event: "custom-event", data: [
 ])
 ```
 
-#### `goBack() -> Bool`
-Navigate back in the WebView. Returns true if navigation occurred.
-
-#### `destroy()`
-Clean up resources when done.
-
 ### LimechatWidgetViewController
 
 #### Static Method
@@ -372,7 +359,11 @@ Clean up resources when done.
 static func present(
     from viewController: UIViewController,
     configuration: WidgetConfiguration,
-    delegate: LimechatWidgetDelegate? = nil
+    delegate: LimechatWidgetDelegate? = nil,
+    initialMessage: String? = nil,
+    initialMessageData: [String: Any]? = nil,
+    animated: Bool = true,
+    completion: (() -> Void)? = nil
 )
 ```
 
@@ -394,7 +385,6 @@ enum WidgetError: LocalizedError {
     case configurationError(String)
     case networkError(String)
     case webViewError(String)
-    case javascriptError(String)
     case unknownError(String)
 }
 ```
@@ -464,13 +454,7 @@ LimechatWidgetViewController.present(
 
 ### 1. Memory Management
 
-Always clean up when done:
-```swift
-override func viewWillDisappear(_ animated: Bool) {
-    super.viewWillDisappear(animated)
-    widgetView?.destroy()
-}
-```
+The widget view releases its resources when it is deallocated. Keep a single reference to it and drop that reference when you are done.
 
 ### 2. Error Handling
 
@@ -492,12 +476,13 @@ func widgetDidReceiveError(_ error: WidgetError) {
 
 For secure user identification:
 ```swift
-// Generate identifier hash on your backend
+// Generate the hash on your backend: HMAC-SHA256(hmac_token, identifier)
 let identifierHash = generateSecureHash(userId: currentUser.id)
 
 let user = WidgetConfiguration.User(
     name: currentUser.name,
     email: currentUser.email,
+    identifier: currentUser.id,
     identifierHash: identifierHash
 )
 ```
@@ -549,17 +534,8 @@ let configuration = WidgetConfiguration(
 - Enable WebView debugging in Safari
 - Check console logs for JavaScript errors
 
-## Sample Project
-
-A complete sample project is available in the `Example` directory:
-
-```bash
-cd limechat-ios-sdk/Example
-open Example.xcodeproj
-```
-
 ## Support
 
-- GitHub Issues: [limechat-ios-sdk/issues](https://github.com/limechat/limechat-ios-sdk/issues)
+- GitHub Issues: [limechat-ios-sdk/issues](https://github.com/wavicle-limechat/widget-sdk-ios/issues)
 - Email: support@limechat.ai
 - Documentation: [docs.limechat.ai](https://docs.limechat.ai)
