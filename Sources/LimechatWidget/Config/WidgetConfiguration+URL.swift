@@ -15,6 +15,7 @@ extension WidgetConfiguration {
         
         var queryItems = [
             URLQueryItem(name: "website_token", value: websiteToken),
+            URLQueryItem(name: "platform", value: "ios"),
             URLQueryItem(name: "locale", value: locale),
             URLQueryItem(name: "color_scheme", value: resolvedColorScheme.rawValue)
         ]
