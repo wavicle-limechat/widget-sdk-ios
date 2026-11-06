@@ -211,6 +211,10 @@ public class LimechatWidget: UIView {
         }
         let widget = LimechatWidgetViewController(configuration: configuration, initialMessage: message, initialMessageData: messageData)
         widget.widgetDelegate = delegate
+        widget.onDismissWithHeldAttributes = { [weak self] held in
+            guard let self = self else { return }
+            self.pendingMessageAttributes.merge(held) { current, _ in current }
+        }
         if !pendingMessageAttributes.isEmpty {
             widget.setMessageAttributes(pendingMessageAttributes)
             pendingMessageAttributes = [:]

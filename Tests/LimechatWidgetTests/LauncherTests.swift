@@ -374,6 +374,90 @@ final class LauncherTests: XCTestCase {
         window.isHidden = true
     }
 
+    func testClosingBeforeReadyKeepsAttributesOnTheLauncher() {
+        let (host, window) = visibleHost()
+        let w = LimechatWidget(configuration: config)
+        host.view.addSubview(w)
+        XCTAssertTrue(w.setMessageAttributes(["a": 1]))
+        w.open(message: "hi")
+        XCTAssertTrue(w.pendingMessageAttributes.isEmpty)
+        dismissPresented(host)
+        XCTAssertEqual(w.pendingMessageAttributes as NSDictionary, ["a": 1])
+        window.isHidden = true
+    }
+
+    func testClosingBeforeReadyKeepsAttributesOnTheIcon() {
+        let (host, window) = visibleHost()
+        let icon = LimechatWidgetIcon()
+        host.view.addSubview(icon)
+        icon.initialize(with: config)
+        XCTAssertTrue(icon.setMessageAttributes(["a": 1]))
+        icon.perform(NSSelectorFromString("iconTapped"))
+        XCTAssertTrue(icon.pendingMessageAttributes.isEmpty)
+        dismissPresented(host)
+        XCTAssertEqual(icon.pendingMessageAttributes as NSDictionary, ["a": 1])
+        window.isHidden = true
+    }
+
+    func testNewerLauncherAttributesWinOverHandedBackOnes() {
+        let (host, window) = visibleHost()
+        let icon = LimechatWidgetIcon()
+        host.view.addSubview(icon)
+        icon.initialize(with: config)
+        XCTAssertTrue(icon.setMessageAttributes(["a": 1, "b": 1]))
+        icon.perform(NSSelectorFromString("iconTapped"))
+        // attributes set while the widget is up, then it is dismissed before they are flushed
+        let presented = host.presentedViewController as? LimechatWidgetViewController
+        presented?.setMessageAttributes(["a": 5])
+        XCTAssertTrue(icon.pendingMessageAttributes.isEmpty)
+        icon.pendingMessageAttributes = ["a": 2]
+        dismissPresented(host)
+        XCTAssertEqual(icon.pendingMessageAttributes as NSDictionary, ["a": 2, "b": 1])
+        window.isHidden = true
+    }
+
+    func testAttributesSentBeforeCloseAreNotHandedBack() {
+        let (host, window) = visibleHost()
+        let w = LimechatWidget(configuration: config)
+        host.view.addSubview(w)
+        w.open(message: "hi")
+        let view = presentedWidgetView(host)
+        view?.pageStarted = true
+        view?.widgetReady = true
+        XCTAssertTrue(w.setMessageAttributes(["a": 1]))
+        XCTAssertEqual(view?.pendingMessageAttributes.isEmpty, true)
+        dismissPresented(host)
+        XCTAssertTrue(w.pendingMessageAttributes.isEmpty)
+        window.isHidden = true
+    }
+
+    /// the spm test runner never finishes an animated present, so viewDidDisappear cannot run for real.
+    /// this calls the same hand back that viewDidDisappear calls on dismissal.
+    private func dismissPresented(_ host: UIViewController) {
+        (host.presentedViewController as? LimechatWidgetViewController)?.handBackHeldAttributes()
+        host.dismiss(animated: false)
+    }
+
+    private final class DismissedController: LimechatWidgetViewController {
+        var dismissed = true
+        override var isBeingDismissed: Bool { dismissed }
+    }
+
+    func testViewDidDisappearHandsBackOnlyWhenDismissed() {
+        let vc = DismissedController(configuration: config)
+        var handed: [[String: Any]] = []
+        vc.onDismissWithHeldAttributes = { handed.append($0) }
+        XCTAssertTrue(vc.setMessageAttributes(["a": 1]))
+        vc.dismissed = false
+        vc.viewDidDisappear(false)
+        XCTAssertTrue(handed.isEmpty)
+        vc.dismissed = true
+        vc.viewDidDisappear(false)
+        XCTAssertEqual(handed as NSArray, [["a": 1]] as NSArray)
+        vc.viewDidDisappear(false)
+        XCTAssertEqual(handed.count, 1)
+    }
+
     func testLimechatWidgetSetMessageAttributesReturnsFalseForInvalidInput() {
         let w = LimechatWidget(configuration: config)
         XCTAssertFalse(w.setMessageAttributes([:]))

@@ -11,6 +11,8 @@ public class LimechatWidgetViewController: UIViewController {
     private var initialMessageData: [String: Any]?
     
     public weak var widgetDelegate: LimechatWidgetDelegate?
+    /// set by the launchers. gets the attributes that were never flushed when the controller is dismissed
+    var onDismissWithHeldAttributes: (([String: Any]) -> Void)?
     
     // MARK: - Initialization
     
@@ -32,6 +34,17 @@ public class LimechatWidgetViewController: UIViewController {
         super.viewDidLoad()
         setupUI()
         setupWidget()
+    }
+    
+    public override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        if isBeingDismissed { handBackHeldAttributes() }
+    }
+    
+    func handBackHeldAttributes() {
+        guard let held = widgetView?.pendingMessageAttributes, !held.isEmpty else { return }
+        widgetView.pendingMessageAttributes = [:]
+        onDismissWithHeldAttributes?(held)
     }
     
     public override var prefersStatusBarHidden: Bool {
