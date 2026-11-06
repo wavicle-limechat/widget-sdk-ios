@@ -21,12 +21,6 @@ extension WidgetConfiguration {
             URLQueryItem(name: "sdk_version", value: "1.0.0")
         ]
         
-        if let user = user {
-            for (key, value) in user.dictionary {
-                queryItems.append(URLQueryItem(name: key, value: "\(value)"))
-            }
-        }
-        
         if let customAttributes = customAttributes,
            !customAttributes.isEmpty,
            let jsonData = try? JSONSerialization.data(withJSONObject: customAttributes),

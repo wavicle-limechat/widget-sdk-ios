@@ -91,43 +91,13 @@ final class URLTests: XCTestCase {
 
     // MARK: user
 
-    func testUserFieldsAreSentAsQueryParams() {
-        let user = WidgetConfiguration.User(name: "A B", email: "a@x.com", phoneNumber: "123")
+    func testUserIsNotSentInTheURL() {
+        let user = WidgetConfiguration.User(name: "A B", email: "a@x.com", phoneNumber: "+123")
         let url = WidgetConfiguration(websiteToken: "t", user: user).widgetURL
-        XCTAssertEqual(value("name", url), "A B")
-        XCTAssertEqual(value("email", url), "a@x.com")
-        XCTAssertEqual(value("phone_number", url), "123")
-        XCTAssertTrue(url!.absoluteString.contains("name=A%20B"))
-    }
-
-    func testPinsCurrentBehaviour_userParamOrderIsDictionaryOrderAfterFixedParams() {
-        let user = WidgetConfiguration.User(name: "n", email: "e", phoneNumber: "p")
-        let names = items(WidgetConfiguration(websiteToken: "t", user: user).widgetURL).map(\.name)
-        XCTAssertEqual(Array(names.prefix(5)), ["website_token", "platform", "locale", "color_scheme", "sdk_version"])
-        // order of the user keys is not stable (Swift Dictionary iteration), only the set is.
-        XCTAssertEqual(Set(names.dropFirst(5)), ["name", "email", "phone_number"])
-    }
-
-    func testNilUserFieldsAreOmitted() {
-        let url = WidgetConfiguration(websiteToken: "t", user: .init(name: "only")).widgetURL
-        XCTAssertEqual(value("name", url), "only")
+        XCTAssertNil(value("name", url))
         XCTAssertNil(value("email", url))
         XCTAssertNil(value("phone_number", url))
-    }
-
-    func testPlusInPhoneAndEmailIsPercentEncoded() {
-        let user = WidgetConfiguration.User(email: "a+b@x.com", phoneNumber: "+919876543210")
-        let url = WidgetConfiguration(websiteToken: "t", user: user).widgetURL
-        let s = url!.absoluteString
-        XCTAssertTrue(s.contains("phone_number=%2B919876543210"), s)
-        XCTAssertTrue(s.contains("email=a%2Bb@x.com"), s)
-        XCTAssertEqual(value("phone_number", url), "+919876543210")
-        XCTAssertEqual(value("email", url), "a+b@x.com")
-    }
-
-    func testEmptyStringUserFieldsAreStillSent() {
-        let url = WidgetConfiguration(websiteToken: "t", user: .init(name: "")).widgetURL
-        XCTAssertEqual(value("name", url), "")
+        XCTAssertEqual(items(url).map(\.name), ["website_token", "platform", "locale", "color_scheme", "sdk_version"])
     }
 
     // MARK: custom attributes
@@ -192,15 +162,13 @@ final class URLTests: XCTestCase {
     // MARK: + encoding (other values unchanged)
 
     func testPlusIsEncodedInEveryValueButParamNamesAndOrderAreUnchanged() {
-        let user = WidgetConfiguration.User(name: "a+b", email: "c+d@x.com", phoneNumber: "+1")
-        let url = WidgetConfiguration(websiteToken: "t+1", locale: "en+", colorScheme: .light, user: user,
+        let url = WidgetConfiguration(websiteToken: "t+1", locale: "en+", colorScheme: .light,
                                       customAttributes: ["k+": "v+"]).widgetURL
         let s = url!.absoluteString
         XCTAssertFalse(s.contains("+"), s)
         XCTAssertEqual(Array(items(url).map(\.name).prefix(5)), ["website_token", "platform", "locale", "color_scheme", "sdk_version"])
         XCTAssertEqual(value("website_token", url), "t+1")
         XCTAssertEqual(value("locale", url), "en+")
-        XCTAssertEqual(value("name", url), "a+b")
         XCTAssertEqual(value("custom_attributes", url), #"{"k+":"v+"}"#)
     }
 

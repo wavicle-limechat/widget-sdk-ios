@@ -20,6 +20,35 @@ final class LifecycleTests: XCTestCase {
         XCTAssertNil(weakWeb)
     }
 
+    // MARK: user script (rnUser)
+
+    func testUserInstallsOneRnUserScriptWithApostropheIntact() {
+        let view = LimechatWidgetView(frame: .zero)
+        let user = WidgetConfiguration.User(name: "O'Brien", email: "o@x.com")
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", user: user))
+        let scripts = view.testWebView.configuration.userContentController.userScripts
+        XCTAssertEqual(scripts.count, 1)
+        XCTAssertTrue(scripts[0].source.contains("window.chatwootWebChannel.rnUser = "))
+        XCTAssertTrue(scripts[0].source.contains("O'Brien"))
+        XCTAssertEqual(scripts[0].injectionTime, .atDocumentEnd)
+    }
+
+    func testNoUserInstallsNoUserScript() {
+        let view = LimechatWidgetView(frame: .zero)
+        view.initialize(with: WidgetConfiguration(websiteToken: "t"))
+        XCTAssertEqual(view.testWebView.configuration.userContentController.userScripts.count, 0)
+    }
+
+    func testSecondInitializeLeavesOneUserScript() {
+        let view = LimechatWidgetView(frame: .zero)
+        let config = WidgetConfiguration(websiteToken: "t", user: .init(name: "A"))
+        view.initialize(with: config)
+        view.initialize(with: config)
+        XCTAssertEqual(view.testWebView.configuration.userContentController.userScripts.count, 1)
+        view.initialize(with: WidgetConfiguration(websiteToken: "t"))
+        XCTAssertEqual(view.testWebView.configuration.userContentController.userScripts.count, 0)
+    }
+
     /// WebKit drops its last internal reference to a WKWebView on a later run loop turn.
     private func waitUntilReleased(timeout: TimeInterval = 5, _ released: () -> Bool) {
         let deadline = Date().addingTimeInterval(timeout)

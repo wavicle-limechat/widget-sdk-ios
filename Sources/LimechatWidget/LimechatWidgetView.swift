@@ -92,6 +92,7 @@ public class LimechatWidgetView: UIView {
             cwConversation = ConversationTokenStore.load(instanceId: instanceId)
         }
         
+        installUserScript()
         loadWidget()
     }
     
@@ -122,6 +123,16 @@ public class LimechatWidgetView: UIView {
     }
     
     // MARK: - Private Methods
+    
+    private func installUserScript() {
+        let controller = webView.configuration.userContentController
+        controller.removeAllUserScripts()
+        guard let user = configuration?.user, !user.dictionary.isEmpty,
+              let data = try? JSONSerialization.data(withJSONObject: user.dictionary),
+              let json = String(data: data, encoding: .utf8) else { return }
+        let source = "window.chatwootWebChannel = window.chatwootWebChannel || {}; window.chatwootWebChannel.rnUser = \(json);"
+        controller.addUserScript(WKUserScript(source: source, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+    }
     
     private func loadWidget() {
         guard let configuration = configuration,
