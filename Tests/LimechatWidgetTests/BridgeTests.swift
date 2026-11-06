@@ -171,12 +171,18 @@ final class BridgeTests: XCTestCase {
         }
         view.sendMessage(event: event, data: data)
         wait(for: [got], timeout: 10)
-        return echoed
+        // the widget only reads strings that start with `chatwoot-widget:`; return the parsed json in `data`.
+        guard var result = echoed.map({ $0.mutableCopy() as! NSMutableDictionary }),
+              let text = result["data"] as? String, text.hasPrefix("chatwoot-widget:"),
+              let json = try? JSONSerialization.jsonObject(with: Data(text.dropFirst("chatwoot-widget:".count).utf8)) as? NSDictionary
+        else { return echoed }
+        result["data"] = json
+        return result
     }
 
-    func testPinsCurrentBehaviour_sendMessagePostsRawObjectNotPrefixedString() {
+    func testSendMessagePostsChatwootPrefixedString() {
         let echo = sendAndCaptureEcho(event: "set-user", data: ["name": "A", "n": 1])
-        XCTAssertEqual(echo?["isString"] as? Bool, false)
+        XCTAssertEqual(echo?["isString"] as? Bool, true)
         XCTAssertEqual(echo?["data"] as? NSDictionary, ["event": "set-user", "name": "A", "n": 1])
     }
 

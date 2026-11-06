@@ -107,7 +107,7 @@ public class LimechatWidgetView: UIView {
             return
         }
         
-        let script = "window.postMessage(\(jsonString), '*');"
+        let script = "window.postMessage('chatwoot-widget:' + JSON.stringify(\(jsonString)), '*');"
         webView.evaluateJavaScript(script) { _, error in
             if let error = error {
                 let widgetError = WidgetError.webViewError("Failed to send message: \(error.localizedDescription)")
