@@ -72,21 +72,25 @@ public class LimechatWidgetViewController: UIViewController {
     
     /// Send a message to the widget
     public func sendMessage(event: String, data: [String: Any] = [:]) {
+        loadViewIfNeeded()
         widgetView.sendMessage(event: event, data: data)
     }
     
     /// Reload the widget and open it with a message
     public func open(message: String) {
+        loadViewIfNeeded()
         widgetView.open(message: message)
     }
     
     /// Reload the widget and open it with a `{content, submitted_values}` payload
     public func open(messageData: [String: Any]) {
+        loadViewIfNeeded()
         widgetView.open(messageData: messageData)
     }
     
     /// Reload the widget
     public func reload() {
+        loadViewIfNeeded()
         widgetView.reload()
     }
     

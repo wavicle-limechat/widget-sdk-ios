@@ -120,6 +120,18 @@ final class LifecycleTests: XCTestCase {
         XCTAssertTrue(widget?.delegate === vc)
     }
 
+    func testCallsBeforeTheViewLoadsDoNotCrash() {
+        let vc = LimechatWidgetViewController(configuration: WidgetConfiguration(websiteToken: "tok"))
+        vc.open(message: "hi")
+        let widget = vc.view.allSubviews(of: LimechatWidgetView.self).first
+        XCTAssertNotNil(widget?.testWebView.url)
+        let other = LimechatWidgetViewController(configuration: WidgetConfiguration(websiteToken: "tok"))
+        other.open(messageData: ["content": "hi"])
+        other.sendMessage(event: "e")
+        other.reload()
+        XCTAssertTrue(other.isViewLoaded)
+    }
+
     func testViewControllerRelaysAllDelegateCalls() {
         let vc = LimechatWidgetViewController(configuration: WidgetConfiguration(websiteToken: "tok"))
         let spy = SpyDelegate()
