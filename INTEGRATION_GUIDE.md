@@ -144,7 +144,7 @@ class MainViewController: UIViewController {
         let configuration = WidgetConfiguration(
             websiteToken: "MEFFACy4xaovJayhLjSt836h",
             locale: "en",
-            colorScheme: .auto, // Follows system theme
+            colorScheme: .auto,
             user: user,
             customAttributes: [
                 "source": "ios_app",
