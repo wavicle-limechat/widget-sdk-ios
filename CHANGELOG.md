@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `open(message:)` and `open(messageData:)` on the widget view and view controller, plus `initialMessage` and `initialMessageData` on `initialize`, the view controller init and `present`.
 - `WidgetConfiguration.hideFilePicker`.
 - `WidgetConfiguration.User.identifier` and `identifierHash`. `set-user` is sent after load only when both are set.
+- `LimechatWidget.open(message:messageData:)` on the launcher. when the widget is already open, the message goes to the open widget.
+- non-json message data reports an error and no longer crashes. view controller calls work before the view loads.
+- under external token management the live token is kept, not the config token.
+- `%` in `lc_open_message` is escaped.
+- no icon fetch when a custom icon is set.
 - the launcher icon uses `widgetIconMobile` from `widget_config`, falling back to the default icon on any failure.
 
 ## [0.0.1] - 2025-08-20
