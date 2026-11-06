@@ -69,6 +69,15 @@ final class LifecycleTests: XCTestCase {
         XCTAssertEqual(spy.calls, [.error("WebView Error: Failed to serialize message"), .error("WebView Error: Failed to serialize message")])
     }
 
+    func testDelegateWithoutUnreadMethodCompilesAndIsCallable() {
+        let delegate = MinimalDelegate()
+        let view = LimechatWidgetView(frame: .zero)
+        view.delegate = delegate
+        delegate.widgetDidReceiveUnreadCount(3)
+        delegate.widgetDidChangeConversationToken("t")
+        XCTAssertTrue(view.delegate === delegate)
+    }
+
     func testNonJSONInitialDataReportsAnError() {
         let view = LimechatWidgetView(frame: .zero)
         let spy = SpyDelegate()

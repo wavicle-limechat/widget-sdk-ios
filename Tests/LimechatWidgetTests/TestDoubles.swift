@@ -30,6 +30,14 @@ final class SpyDelegate: LimechatWidgetDelegate {
     func widgetDidChangeConversationToken(_ token: String) { record(.token(token)) }
 }
 
+/// Implements only the methods without a default, to prove the rest stay optional.
+final class MinimalDelegate: LimechatWidgetDelegate {
+    func widgetDidLoad() {}
+    func widgetDidRequestClose() {}
+    func widgetDidReceiveError(_ error: WidgetError) {}
+    func widgetDidReceiveMessage(_ message: [String: Any]) {}
+}
+
 /// Points ConversationTokenStore at a throwaway UserDefaults suite and an empty cache.
 final class TokenStoreSandbox {
     let suiteName = "limechat-tests-\(UUID().uuidString)"

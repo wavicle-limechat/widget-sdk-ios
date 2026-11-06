@@ -13,5 +13,6 @@ public protocol LimechatWidgetDelegate: AnyObject {
 }
 
 public extension LimechatWidgetDelegate {
+    func widgetDidReceiveUnreadCount(_ count: Int) {}
     func widgetDidChangeConversationToken(_ token: String) {}
 }
