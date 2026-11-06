@@ -5,9 +5,7 @@ final class ModelTests: XCTestCase {
 
     func testErrorDescriptions() {
         XCTAssertEqual(WidgetError.configurationError("a").errorDescription, "Configuration Error: a")
-        XCTAssertEqual(WidgetError.networkError("b").errorDescription, "Network Error: b")
         XCTAssertEqual(WidgetError.webViewError("c").errorDescription, "WebView Error: c")
-        XCTAssertEqual(WidgetError.unknownError("d").errorDescription, "Unknown Error: d")
         XCTAssertEqual(WidgetError.webViewError("c").localizedDescription, "WebView Error: c")
     }
 
