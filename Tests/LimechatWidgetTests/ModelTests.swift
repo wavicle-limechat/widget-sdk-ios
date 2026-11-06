@@ -26,4 +26,19 @@ final class ModelTests: XCTestCase {
         let data = try JSONEncoder().encode(WidgetConfiguration.User(phoneNumber: "p"))
         XCTAssertEqual(String(data: data, encoding: .utf8), #"{"phoneNumber":"p"}"#)
     }
+
+    func testRnUserCarriesCustomAttributes() {
+        let u = WidgetConfiguration.User(name: "n", customAttributes: ["plan": "pro", "seats": 3])
+        XCTAssertEqual(u.dictionary as NSDictionary, ["name": "n", "custom_attributes": ["plan": "pro", "seats": 3]])
+        XCTAssertNil(WidgetConfiguration.User(name: "n").dictionary["custom_attributes"])
+    }
+
+    func testUserStillEncodesAndDecodes() throws {
+        let data = try JSONEncoder().encode(WidgetConfiguration.User(name: "n", customAttributes: ["a": 1]))
+        XCTAssertEqual(String(data: data, encoding: .utf8), #"{"name":"n"}"#)
+        let decoded = try JSONDecoder().decode(WidgetConfiguration.User.self, from: Data(#"{"name":"n","identifier":"i"}"#.utf8))
+        XCTAssertEqual(decoded.name, "n")
+        XCTAssertEqual(decoded.identifier, "i")
+        XCTAssertNil(decoded.customAttributes)
+    }
 }

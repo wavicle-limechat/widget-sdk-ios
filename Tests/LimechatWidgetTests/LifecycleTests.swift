@@ -33,6 +33,26 @@ final class LifecycleTests: XCTestCase {
         XCTAssertEqual(scripts[0].injectionTime, .atDocumentEnd)
     }
 
+    func testRnUserScriptCarriesCustomAttributes() {
+        let view = LimechatWidgetView(frame: .zero)
+        let user = WidgetConfiguration.User(name: "A", customAttributes: ["plan": "pro"])
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", user: user))
+        let scripts = view.testWebView.configuration.userContentController.userScripts
+        XCTAssertEqual(scripts.count, 1)
+        XCTAssertTrue(scripts[0].source.contains("custom_attributes"))
+        XCTAssertTrue(scripts[0].source.contains("plan"))
+    }
+
+    func testNonJSONUserCustomAttributesAreSkippedWithoutACrash() {
+        let view = LimechatWidgetView(frame: .zero)
+        let user = WidgetConfiguration.User(name: "A", customAttributes: ["when": Date()])
+        XCTAssertNil(user.dictionary["custom_attributes"])
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", user: user))
+        let scripts = view.testWebView.configuration.userContentController.userScripts
+        XCTAssertEqual(scripts.count, 1)
+        XCTAssertFalse(scripts[0].source.contains("custom_attributes"))
+    }
+
     func testNoUserInstallsNoUserScript() {
         let view = LimechatWidgetView(frame: .zero)
         view.initialize(with: WidgetConfiguration(websiteToken: "t"))

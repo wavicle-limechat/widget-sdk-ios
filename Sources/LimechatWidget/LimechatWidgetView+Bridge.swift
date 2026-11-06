@@ -43,6 +43,7 @@ extension LimechatWidgetView {
               let hash = user.identifierHash, !hash.isEmpty else { return }
         var fields = user.dictionary
         fields.removeValue(forKey: "phone_number")
+        fields.removeValue(forKey: "custom_attributes")
         fields["identifier_hash"] = hash
         sendMessage(event: "set-user", data: ["identifier": identifier, "user": fields])
     }

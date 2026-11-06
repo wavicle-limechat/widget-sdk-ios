@@ -57,19 +57,27 @@ public struct WidgetConfiguration {
         public let phoneNumber: String?
         public let identifier: String?
         public let identifierHash: String?
+        /// Custom attributes of the user, sent with the rnUser script
+        public private(set) var customAttributes: [String: Any]? = nil
+        
+        private enum CodingKeys: String, CodingKey {
+            case name, email, phoneNumber, identifier, identifierHash
+        }
         
         public init(
             name: String? = nil,
             email: String? = nil,
             phoneNumber: String? = nil,
             identifier: String? = nil,
-            identifierHash: String? = nil
+            identifierHash: String? = nil,
+            customAttributes: [String: Any]? = nil
         ) {
             self.name = name
             self.email = email
             self.phoneNumber = phoneNumber
             self.identifier = identifier
             self.identifierHash = identifierHash
+            self.customAttributes = customAttributes
         }
         
         var dictionary: [String: Any] {
@@ -77,6 +85,9 @@ public struct WidgetConfiguration {
             if let name = name { dict["name"] = name }
             if let email = email { dict["email"] = email }
             if let phoneNumber = phoneNumber { dict["phone_number"] = phoneNumber }
+            if let customAttributes = customAttributes, JSONSerialization.isValidJSONObject(customAttributes) {
+                dict["custom_attributes"] = customAttributes
+            }
             return dict
         }
     }

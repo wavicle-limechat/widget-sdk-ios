@@ -217,6 +217,15 @@ final class BridgeTests: XCTestCase {
                               "user": ["name": "A", "email": "a@x.com", "identifier_hash": "h1"]])
     }
 
+    func testSetUserLeavesOutCustomAttributes() {
+        let user = WidgetConfiguration.User(name: "A", identifier: "id1", identifierHash: "h1", customAttributes: ["plan": "pro"])
+        view.configuration = WidgetConfiguration(websiteToken: "t", user: user)
+        loadPage(echoPage, into: view, spy: spy)
+        waitForEchoes(1)
+        let data = echoes().first.flatMap(parsedEchoData)
+        XCTAssertEqual(data, ["event": "set-user", "identifier": "id1", "user": ["name": "A", "identifier_hash": "h1"]])
+    }
+
     func testSetUserIsNotSentWithHashOnlyOrIdentifierOnly() {
         loadPage(echoPage, into: view, spy: spy)
         view.configuration = WidgetConfiguration(websiteToken: "t", user: .init(identifierHash: "h"))
