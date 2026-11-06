@@ -118,6 +118,12 @@ public class LimechatWidgetView: UIView {
     
     /// Send a message to the widget
     public func sendMessage(event: String, data: [String: Any] = [:]) {
+        deliver(event: event, data: data)
+    }
+    
+    /// - Returns: false when the message could not be serialised, nothing was sent
+    @discardableResult
+    func deliver(event: String, data: [String: Any]) -> Bool {
         var message = data
         message["event"] = event
         
@@ -126,7 +132,7 @@ public class LimechatWidgetView: UIView {
               let jsonString = String(data: jsonData, encoding: .utf8) else {
             let error = WidgetError.webViewError("Failed to serialize message")
             delegate?.widgetDidReceiveError(error)
-            return
+            return false
         }
         
         let script = "window.postMessage('chatwoot-widget:' + JSON.stringify(\(jsonString)), '*');"
@@ -136,6 +142,7 @@ public class LimechatWidgetView: UIView {
                 self.delegate?.widgetDidReceiveError(widgetError)
             }
         }
+        return true
     }
     
     /// Open the widget with a message. Sent now if the widget is ready, otherwise held until it is
@@ -167,9 +174,9 @@ public class LimechatWidgetView: UIView {
     
     func flushMessageAttributes() {
         guard widgetReady, !pendingMessageAttributes.isEmpty else { return }
-        let attributes = pendingMessageAttributes
-        pendingMessageAttributes = [:]
-        sendMessage(event: "set-message-attributes", data: ["attributes": attributes])
+        if deliver(event: "set-message-attributes", data: ["attributes": pendingMessageAttributes]) {
+            pendingMessageAttributes = [:]
+        }
     }
     
     /// Reload the widget

@@ -61,6 +61,15 @@ final class MessageAttributesTests: XCTestCase {
         XCTAssertEqual(spy.calls, [])
     }
 
+    func testAttributesStayHeldWhenTheSendCannotSerialise() {
+        view.pendingMessageAttributes = ["when": Date()]
+        view.pageStarted = true
+        view.widgetReady = true
+        view.flushMessageAttributes()
+        XCTAssertEqual(spy.calls, [.error("WebView Error: Failed to serialize message")])
+        XCTAssertEqual(view.pendingMessageAttributes.count, 1)
+    }
+
     func testAttributesAreHeldBeforeReady() {
         XCTAssertTrue(view.setMessageAttributes(["a": 1]))
         XCTAssertEqual(view.pendingMessageAttributes as NSDictionary, ["a": 1])
