@@ -362,6 +362,7 @@ protocol LimechatWidgetDelegate: AnyObject {
     func widgetDidRequestClose()
     func widgetDidReceiveError(_ error: WidgetError)
     func widgetDidReceiveMessage(_ message: [String: Any])
+    func widgetDidReceiveUnreadCount(_ count: Int) // optional
     func widgetDidChangeConversationToken(_ token: String) // optional
 }
 ```
@@ -375,6 +376,7 @@ At ready the SDK sends the verified `set-user` event, held attributes, then a he
 | `widgetDidLoad` | once per page load, at ready |
 | `widgetDidReceiveError` | configuration, load, http (400 and above), serialisation and web process errors |
 | `widgetDidRequestClose` | the widget asked to close |
+| `widgetDidReceiveUnreadCount` | the widget reported a new unread count |
 | `widgetDidChangeConversationToken` | the widget reported a conversation token |
 | `widgetDidReceiveMessage` | any other widget event |
 
