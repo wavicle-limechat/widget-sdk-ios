@@ -44,7 +44,19 @@ public class LimechatWidget: UIView {
     private var widgetIcon: LimechatWidgetIcon?
     private var customButtonContainer: UIView?
     private var unreadCountBadge: UIView?
-    var pendingMessageAttributes: [String: Any] = [:]
+    private var ownPendingMessageAttributes: [String: Any] = [:]
+    /// One buffer: the default icon holds it when there is one, so a tap on the icon sees it
+    var pendingMessageAttributes: [String: Any] {
+        get { widgetIcon?.pendingMessageAttributes ?? ownPendingMessageAttributes }
+        set {
+            if let icon = widgetIcon {
+                icon.pendingMessageAttributes = newValue
+                ownPendingMessageAttributes = [:]
+            } else {
+                ownPendingMessageAttributes = newValue
+            }
+        }
+    }
     private var unreadCount: Int = 0 {
         didSet {
             updateUnreadCount()
@@ -78,6 +90,7 @@ public class LimechatWidget: UIView {
     // MARK: - Setup
     
     private func setupWidget() {
+        let held = pendingMessageAttributes
         subviews.forEach { $0.removeFromSuperview() }
         widgetIcon = nil
         customButtonContainer = nil
@@ -91,6 +104,7 @@ public class LimechatWidget: UIView {
         
         setupUnreadCountBadge()
         applyStyles()
+        pendingMessageAttributes = held
     }
     
     private func setupCustomButton(_ button: UIView) {

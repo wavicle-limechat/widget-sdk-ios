@@ -333,6 +333,33 @@ final class LauncherTests: XCTestCase {
         window.isHidden = true
     }
 
+    func testLimechatWidgetDefaultIconTapHandsAttributesToThePresentedWidget() {
+        let (host, window) = visibleHost()
+        let w = LimechatWidget(configuration: config)
+        host.view.addSubview(w)
+        XCTAssertTrue(w.setMessageAttributes(["a": 1]))
+        guard let icon = w.allSubviews(of: LimechatWidgetIcon.self).first else { return XCTFail("no icon") }
+        icon.perform(NSSelectorFromString("iconTapped"))
+        XCTAssertEqual(presentedWidgetView(host)?.pendingMessageAttributes as NSDictionary?, ["a": 1])
+        XCTAssertTrue(w.pendingMessageAttributes.isEmpty)
+        window.isHidden = true
+    }
+
+    func testLimechatWidgetKeepsHeldAttributesWhenCustomButtonChanges() {
+        let (host, window) = visibleHost()
+        let w = LimechatWidget(configuration: config)
+        host.view.addSubview(w)
+        XCTAssertTrue(w.setMessageAttributes(["a": 1]))
+        w.customButton = UIView()
+        XCTAssertEqual(w.pendingMessageAttributes as NSDictionary, ["a": 1])
+        w.customButton = nil
+        XCTAssertEqual(w.pendingMessageAttributes as NSDictionary, ["a": 1])
+        guard let icon = w.allSubviews(of: LimechatWidgetIcon.self).first else { return XCTFail("no icon") }
+        icon.perform(NSSelectorFromString("iconTapped"))
+        XCTAssertEqual(presentedWidgetView(host)?.pendingMessageAttributes as NSDictionary?, ["a": 1])
+        window.isHidden = true
+    }
+
     func testLimechatWidgetKeepsAttributesWhenAnotherWidgetIsOpen() {
         let (host, window) = visibleHost()
         let a = LimechatWidget(configuration: WidgetConfiguration(websiteToken: "tokenA"))
