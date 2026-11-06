@@ -88,6 +88,13 @@ public class LimechatWidgetViewController: UIViewController {
         widgetView.open(messageData: messageData)
     }
     
+    /// Attach custom attributes to the customer's next message
+    @discardableResult
+    public func setMessageAttributes(_ attributes: [String: Any]) -> Bool {
+        loadViewIfNeeded()
+        return widgetView.setMessageAttributes(attributes)
+    }
+    
     /// Reload the widget
     public func reload() {
         loadViewIfNeeded()

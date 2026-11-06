@@ -15,6 +15,7 @@ public class LimechatWidgetView: UIView {
     /// true once the widget posted set-cw-conversation on the current document
     var widgetReady = false
     var pendingOpen: Any?
+    var pendingMessageAttributes: [String: Any] = [:]
     
     public weak var delegate: LimechatWidgetDelegate?
     
@@ -83,6 +84,7 @@ public class LimechatWidgetView: UIView {
     
     /// Initialize the widget with configuration
     public func initialize(with configuration: WidgetConfiguration, initialMessage: String? = nil, initialMessageData: [String: Any]? = nil) {
+        if self.configuration != nil { pendingMessageAttributes = [:] }
         self.configuration = configuration
         pendingOpen = nil
         
@@ -148,6 +150,24 @@ public class LimechatWidgetView: UIView {
             return
         }
         deliverOpen(messageData)
+    }
+    
+    /// Attach custom attributes to the customer's next message. Repeat calls merge, later keys win.
+    /// Held until the widget is ready, and sent before a held open message.
+    /// - Returns: false for an empty or non-json value
+    @discardableResult
+    public func setMessageAttributes(_ attributes: [String: Any]) -> Bool {
+        guard !attributes.isEmpty, JSONSerialization.isValidJSONObject(attributes) else { return false }
+        pendingMessageAttributes.merge(attributes) { _, new in new }
+        flushMessageAttributes()
+        return true
+    }
+    
+    func flushMessageAttributes() {
+        guard widgetReady, !pendingMessageAttributes.isEmpty else { return }
+        let attributes = pendingMessageAttributes
+        pendingMessageAttributes = [:]
+        sendMessage(event: "set-message-attributes", data: ["attributes": attributes])
     }
     
     /// Reload the widget

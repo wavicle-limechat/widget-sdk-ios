@@ -29,6 +29,7 @@ extension LimechatWidgetView {
         guard pageStarted, !widgetReady else { return false }
         widgetReady = true
         sendVerifiedUser()
+        flushMessageAttributes()
         if let message = pendingOpen {
             pendingOpen = nil
             sendMessage(event: "open-with-message", data: ["openMessage": message])
