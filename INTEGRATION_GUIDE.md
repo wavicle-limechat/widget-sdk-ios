@@ -33,7 +33,7 @@ Add the dependency to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/wavicle-limechat/widget-sdk-ios.git", from: "1.0.0")
+    .package(url: "https://github.com/wavicle-limechat/widget-sdk-ios.git", from: "0.0.1")
 ]
 ```
 
@@ -195,7 +195,7 @@ struct LimechatWidgetSheet: UIViewControllerRepresentable {
     class Coordinator: NSObject, LimechatWidgetDelegate {
         let parent: LimechatWidgetSheet
         
-        init(_ parent: LimechatWidgetView) {
+        init(_ parent: LimechatWidgetSheet) {
             self.parent = parent
         }
         
@@ -290,7 +290,7 @@ let user = WidgetConfiguration.User(
 )
 ```
 
-The verified `set-user` event is sent once per page load, at ready, and only when both `identifier` and `identifierHash` are set. `name`, `email`, `phoneNumber` and the user `customAttributes` are passed to the widget on their own and need no hash. They are not verified: on the customer's first message the server updates the contact, and can merge into an existing contact with the same email or phone. User `customAttributes` go with the customer's next message, they are not set on the contact.
+The verified `set-user` event is sent once per page load, at ready, and only when both `identifier` and `identifierHash` are set. `name`, `email`, `phoneNumber` and the user `customAttributes` are passed to the widget on their own and need no hash. They are not verified: on the customer's first message the server updates the contact, and can merge into an existing contact with the same email or phone. User custom attributes go with every message the customer types, not onto the contact.
 
 ### Conversation Tokens
 
@@ -321,7 +321,7 @@ Open the widget with a message. Sent now if the widget is ready, otherwise held 
 Attach custom attributes to the customer's next message. Returns `false` for an empty or non-JSON value. See [Message Attributes](README.md#message-attributes). Needs a widget build containing `c8126fb7cd`.
 
 #### `reload()`
-Load the page again. Before `initialize` the view reports a configuration error.
+Load the page again. Before `initialize` it does nothing. Held attributes and open messages stay, sent attributes are lost with the page.
 
 #### `sendMessage(event: String, data: [String: Any])`
 Send custom messages to the widget. A message sent before the widget is ready is lost.
@@ -352,7 +352,7 @@ static func present(
 
 ### Launchers
 
-`addWidgetIcon(configuration:delegate:position:customIcon:)` returns a `LimechatWidgetIcon`. `LimechatWidget(configuration:customButton:delegate:)` is a view you place yourself, with an optional custom button. Both present the widget on tap. `LimechatWidget` also has `open(message:messageData:)`, `setMessageAttributes` and `setUnreadCount(_:)`, and `LimechatWidgetIcon` has `setMessageAttributes` and `setUnreadCount(_:)`. The badge shows the count you set. Attributes reach the widget on tap or `open`, and are lost if the user closes before ready.
+`addWidgetIcon(configuration:delegate:position:customIcon:)` returns a `LimechatWidgetIcon`. `LimechatWidget(configuration:customButton:delegate:)` is a view you place yourself, with an optional custom button. Both present the widget on tap. `LimechatWidget` also has `open(message:messageData:)`, `setMessageAttributes` and `setUnreadCount(_:)`, and `LimechatWidgetIcon` has `setMessageAttributes` and `setUnreadCount(_:)`. The badge shows the count you set. Attributes reach the widget on tap or `open`. Attributes not sent yet when the user closes the widget stay held for the next open.
 
 ### LimechatWidgetDelegate
 
@@ -367,6 +367,16 @@ protocol LimechatWidgetDelegate: AnyObject {
 ```
 
 `widgetDidLoad` fires once per page load, when the widget can receive messages. A failed page gives `widgetDidReceiveError` and no `widgetDidLoad`. A page that returns 200 but never mounts gives neither.
+
+At ready the SDK sends the verified `set-user` event, held attributes, then a held open message. Then `widgetDidChangeConversationToken` and `widgetDidLoad` fire. `widgetDidReceiveError` also reports web process failures: if the web process dies (for example under memory pressure), ready resets and the SDK reloads the page once. Held attributes and a held open message stay and go out at the next ready, attributes first. Attributes already sent are lost with the page. If the process dies again before the page is ready, the SDK does not reload again and `widgetDidReceiveError` gets `Widget web process died again before ready`. The page stays blank after that, so dismiss the widget on this error. `LimechatWidgetViewController` and the launchers have no native close. Only a ready page resets the one-reload allowance. A later `open(message:)` or `reload()` still loads the page.
+
+| callback | fires |
+|---|---|
+| `widgetDidLoad` | once per page load, at ready |
+| `widgetDidReceiveError` | configuration, load, http (400 and above), serialisation and web process errors |
+| `widgetDidRequestClose` | the widget asked to close |
+| `widgetDidChangeConversationToken` | the widget reported a conversation token |
+| `widgetDidReceiveMessage` | any other widget event |
 
 ### WidgetError
 

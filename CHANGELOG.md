@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `open(message:)` and `open(messageData:)` send now when the widget is ready and never reload a ready widget. When it is not ready the message is held and sent at ready, with no message in the url. An empty value does nothing.
 - `widgetDidReceiveUnreadCount` is optional on `LimechatWidgetDelegate`.
 - `LimechatWidget.open` reports an error on the delegate when another view controller is presented and a message cannot be delivered.
-- `sdk_version` is no longer sent in the widget url. `platform=ios` is still sent.
+- `sdk_version` is no longer sent in the widget url. `platform=ios` is still sent, and all SDKs now send `platform`.
 - `sendMessage` now posts `chatwoot-widget:` + json, the only form the widget reads. it was a silent no-op before.
 - the widget bridge listens on the `limechat` handler only. `limechatNative`, string bodies, the `close` event alias and `limechat://close` are removed, the widget never sent them.
 - user `name`, `email` and `phoneNumber` are passed through `window.chatwootWebChannel.rnUser` and no longer sit in the widget url. hosts that pass a user now update the contact on the first message.
@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `setMessageAttributes(_:)` on `LimechatWidgetView`, `LimechatWidgetViewController`, `LimechatWidget` and `LimechatWidgetIcon`. Attaches custom attributes to the customer's next message. Needs a widget build containing `c8126fb7cd`, older builds ignore it. A tap on the default launcher icon delivers attributes set on `LimechatWidget`.
-- `reload()` on `LimechatWidgetView` and `LimechatWidgetViewController`. Before `initialize` the view reports a configuration error.
+- `reload()` on `LimechatWidgetView` and `LimechatWidgetViewController`. Before `initialize` the call does nothing.
 - `WidgetConfiguration.User.customAttributes`, sent through `rnUser` and attached to the next message.
 - `open(message:)` and `open(messageData:)` on the widget view and view controller, plus `initialMessage` and `initialMessageData` on `initialize`, the view controller init and `present`.
 - `WidgetConfiguration.hideFilePicker`.
@@ -36,7 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - main frame http errors (status 400 and above) reach `widgetDidReceiveError`.
-- when the web content process is killed, ready resets, so the next `open` or `reload()` loads the page again.
+- when the web content process dies, ready resets and the page reloads once with the live token. A second death before ready does not reload and reports `Widget web process died again before ready` through `widgetDidReceiveError`. The page stays blank then, so dismiss the widget on that error. Only a ready page resets the allowance.
+- `reload()` before `initialize` does nothing instead of reporting a configuration error.
+- attributes that were not flushed when a launcher widget closes stay held on the launcher.
+- held attributes stay held when the send cannot be serialised.
 
 ### Deprecated
 - `LimechatWidget.containerStyle` is unused and is removed at the next major.
