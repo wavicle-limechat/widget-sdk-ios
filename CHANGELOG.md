@@ -7,13 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+> **Upgrade note: unverified contact update.** User details passed to the SDK reach the widget through `rnUser` with no verification. On the customer's first message the server updates the contact, and can merge into an existing contact with the same email or phone. If you use identity validation, pass `identifier` and `identifierHash` so the contact is verified.
+
 ### Changed
+- `widgetDidLoad` fires once per page load, when the widget is ready to receive messages, not on page finish. A failed page gives `widgetDidReceiveError` and no `widgetDidLoad`.
+- `open(message:)` and `open(messageData:)` send now when the widget is ready and never reload a ready widget. When it is not ready the message is held and sent at ready, with no message in the url. An empty value does nothing.
+- `widgetDidReceiveUnreadCount` is optional on `LimechatWidgetDelegate`.
+- `LimechatWidget.open` reports an error on the delegate when another view controller is presented and a message cannot be delivered.
+- `sdk_version` is no longer sent in the widget url. `platform=ios` is still sent.
 - `sendMessage` now posts `chatwoot-widget:` + json, the only form the widget reads. it was a silent no-op before.
 - the widget bridge listens on the `limechat` handler only. `limechatNative`, string bodies, the `close` event alias and `limechat://close` are removed, the widget never sent them.
 - user `name`, `email` and `phoneNumber` are passed through `window.chatwootWebChannel.rnUser` and no longer sit in the widget url. hosts that pass a user now update the contact on the first message.
 - a delegate set on `LimechatWidget` after init is passed to the default icon.
 
 ### Added
+- `setMessageAttributes(_:)` on `LimechatWidgetView`, `LimechatWidgetViewController`, `LimechatWidget` and `LimechatWidgetIcon`. Attaches custom attributes to the customer's next message. Needs a widget build containing `c8126fb7cd`, older builds ignore it. A tap on the default launcher icon delivers attributes set on `LimechatWidget`.
+- `reload()` on `LimechatWidgetView` and `LimechatWidgetViewController`. Before `initialize` the view reports a configuration error.
+- `WidgetConfiguration.User.customAttributes`, sent through `rnUser` and attached to the next message.
 - `open(message:)` and `open(messageData:)` on the widget view and view controller, plus `initialMessage` and `initialMessageData` on `initialize`, the view controller init and `present`.
 - `WidgetConfiguration.hideFilePicker`.
 - `WidgetConfiguration.User.identifier` and `identifierHash`. `set-user` is sent after load only when both are set.
@@ -23,6 +33,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `%` in `lc_open_message` is escaped.
 - no icon fetch when a custom icon is set.
 - the launcher icon uses `widgetIconMobile` from `widget_config`, falling back to the default icon on any failure.
+
+### Fixed
+- main frame http errors (status 400 and above) reach `widgetDidReceiveError`.
+- when the web content process is killed, ready resets, so the next `open` or `reload()` loads the page again.
+
+### Deprecated
+- `LimechatWidget.containerStyle` is unused and is removed at the next major.
+
+### Removed
+- `WidgetError.networkError` and `WidgetError.unknownError`. Nothing in the SDK produced them. An exhaustive `switch` over `WidgetError` must be updated.
 
 ## [0.0.1] - 2025-08-20
 
