@@ -296,6 +296,96 @@ final class LauncherTests: XCTestCase {
         window.isHidden = true
     }
 
+    // MARK: setMessageAttributes
+
+    private func presentedWidgetView(_ host: UIViewController) -> LimechatWidgetView? {
+        (host.presentedViewController as? LimechatWidgetViewController)?.view.allSubviews(of: LimechatWidgetView.self).first
+    }
+
+    private func visibleHost() -> (UIViewController, UIWindow) {
+        let host = UIViewController()
+        let window = UIWindow(frame: UIScreen.main.bounds)
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        return (host, window)
+    }
+
+    func testLimechatWidgetBuffersThenHandsAttributesToThePresentedWidget() {
+        let (host, window) = visibleHost()
+        let w = LimechatWidget(configuration: config)
+        host.view.addSubview(w)
+        XCTAssertTrue(w.setMessageAttributes(["a": 1]))
+        XCTAssertTrue(w.setMessageAttributes(["a": 2, "b": 3]))
+        w.open(message: "hi")
+        XCTAssertEqual(presentedWidgetView(host)?.pendingMessageAttributes as NSDictionary?, ["a": 2, "b": 3])
+        XCTAssertTrue(w.pendingMessageAttributes.isEmpty)
+        window.isHidden = true
+    }
+
+    func testLimechatWidgetForwardsAttributesWhenAMatchingWidgetIsOpen() {
+        let (host, window) = visibleHost()
+        let w = LimechatWidget(configuration: config)
+        host.view.addSubview(w)
+        w.open(message: "hi")
+        XCTAssertTrue(w.setMessageAttributes(["a": 1]))
+        XCTAssertEqual(presentedWidgetView(host)?.pendingMessageAttributes as NSDictionary?, ["a": 1])
+        XCTAssertTrue(w.pendingMessageAttributes.isEmpty)
+        window.isHidden = true
+    }
+
+    func testLimechatWidgetKeepsAttributesWhenAnotherWidgetIsOpen() {
+        let (host, window) = visibleHost()
+        let a = LimechatWidget(configuration: WidgetConfiguration(websiteToken: "tokenA"))
+        let b = LimechatWidget(configuration: WidgetConfiguration(websiteToken: "tokenB"), delegate: SpyDelegate())
+        host.view.addSubview(a)
+        host.view.addSubview(b)
+        a.open(message: "for A")
+        XCTAssertTrue(b.setMessageAttributes(["x": 1]))
+        b.open(message: "for B") // refused: not delivered, attributes must not be lost
+        XCTAssertEqual(b.pendingMessageAttributes as NSDictionary, ["x": 1])
+        XCTAssertEqual(presentedWidgetView(host)?.pendingMessageAttributes.isEmpty, true)
+        window.isHidden = true
+    }
+
+    func testLimechatWidgetSetMessageAttributesReturnsFalseForInvalidInput() {
+        let w = LimechatWidget(configuration: config)
+        XCTAssertFalse(w.setMessageAttributes([:]))
+        XCTAssertFalse(w.setMessageAttributes(["when": Date()]))
+        XCTAssertTrue(w.pendingMessageAttributes.isEmpty)
+    }
+
+    func testIconBuffersThenHandsAttributesToThePresentedWidget() {
+        let (host, window) = visibleHost()
+        let icon = LimechatWidgetIcon()
+        host.view.addSubview(icon)
+        XCTAssertTrue(icon.setMessageAttributes(["a": 1])) // before initialize
+        icon.initialize(with: config)
+        XCTAssertTrue(icon.setMessageAttributes(["b": 2]))
+        icon.perform(NSSelectorFromString("iconTapped"))
+        XCTAssertEqual(presentedWidgetView(host)?.pendingMessageAttributes as NSDictionary?, ["a": 1, "b": 2])
+        XCTAssertTrue(icon.pendingMessageAttributes.isEmpty)
+        window.isHidden = true
+    }
+
+    func testIconForwardsAttributesWhenItsWidgetIsOpen() {
+        let (host, window) = visibleHost()
+        let icon = LimechatWidgetIcon()
+        host.view.addSubview(icon)
+        icon.initialize(with: config)
+        icon.perform(NSSelectorFromString("iconTapped"))
+        XCTAssertTrue(icon.setMessageAttributes(["a": 1]))
+        XCTAssertEqual(presentedWidgetView(host)?.pendingMessageAttributes as NSDictionary?, ["a": 1])
+        XCTAssertTrue(icon.pendingMessageAttributes.isEmpty)
+        window.isHidden = true
+    }
+
+    func testIconSetMessageAttributesReturnsFalseForInvalidInput() {
+        let icon = LimechatWidgetIcon()
+        XCTAssertFalse(icon.setMessageAttributes([:]))
+        XCTAssertFalse(icon.setMessageAttributes(["when": Date()]))
+        XCTAssertTrue(icon.pendingMessageAttributes.isEmpty)
+    }
+
     func testLimechatWidgetOpenWithoutViewControllerIsSilent() {
         let w = LimechatWidget(configuration: config)
         w.open(message: "hi")

@@ -43,6 +43,7 @@ public class LimechatWidget: UIView {
     private var widgetIcon: LimechatWidgetIcon?
     private var customButtonContainer: UIView?
     private var unreadCountBadge: UIView?
+    var pendingMessageAttributes: [String: Any] = [:]
     private var unreadCount: Int = 0 {
         didSet {
             updateUnreadCount()
@@ -197,7 +198,24 @@ public class LimechatWidget: UIView {
             }
             return
         }
-        LimechatWidgetViewController.present(from: viewController, configuration: configuration, delegate: delegate, initialMessage: message, initialMessageData: messageData)
+        let widget = LimechatWidgetViewController(configuration: configuration, initialMessage: message, initialMessageData: messageData)
+        widget.widgetDelegate = delegate
+        if !pendingMessageAttributes.isEmpty {
+            widget.setMessageAttributes(pendingMessageAttributes)
+            pendingMessageAttributes = [:]
+        }
+        viewController.present(widget, animated: true)
+    }
+    
+    /// Attach custom attributes to the customer's next message. Held until the widget is presented
+    @discardableResult
+    public func setMessageAttributes(_ attributes: [String: Any]) -> Bool {
+        guard !attributes.isEmpty, JSONSerialization.isValidJSONObject(attributes) else { return false }
+        if let presented = LimechatWidgetViewController.presented(from: findViewController(), for: configuration) {
+            return presented.setMessageAttributes(attributes)
+        }
+        pendingMessageAttributes.merge(attributes) { _, new in new }
+        return true
     }
     
     /// Update unread count
