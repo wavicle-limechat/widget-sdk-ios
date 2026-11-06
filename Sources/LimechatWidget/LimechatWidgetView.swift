@@ -181,6 +181,7 @@ public class LimechatWidgetView: UIView {
     
     /// Reload the widget
     public func reload() {
+        guard configuration != nil else { return }
         loadWidget()
     }
     

@@ -112,11 +112,6 @@ final class NavigationTests: XCTestCase {
         XCTAssertEqual(spy.calls, [.error("Configuration Error: Invalid configuration or URL")])
     }
 
-    func testReloadBeforeInitializeReportsConfigurationError() {
-        view.reload()
-        XCTAssertEqual(spy.calls, [.error("Configuration Error: Invalid configuration or URL")])
-    }
-
     // MARK: ready (set-cw-conversation after the page committed)
 
     private func ready(_ body: [String: Any] = ["event": "set-cw-conversation"]) {
@@ -183,6 +178,12 @@ final class NavigationTests: XCTestCase {
         XCTAssertEqual(view.pendingOpen as? String, "hi")
         XCTAssertTrue(view.testWebView.isLoading)
         view.testWebView.stopLoading()
+    }
+
+    func testReloadBeforeInitializeDoesNothing() {
+        view.reload()
+        XCTAssertEqual(spy.calls, [])
+        XCTAssertFalse(view.testWebView.isLoading)
     }
 
     func testProcessDeathReloadsOnceThenReportsUntilReady() throws {
