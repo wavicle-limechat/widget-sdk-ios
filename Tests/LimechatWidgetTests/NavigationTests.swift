@@ -117,9 +117,57 @@ final class NavigationTests: XCTestCase {
         XCTAssertEqual(spy.calls, [.error("Configuration Error: Invalid configuration or URL")])
     }
 
-    func testDidFinishFiresWidgetDidLoad() {
-        view.webView(view.testWebView, didFinish: nil)
+    // MARK: ready (set-cw-conversation after the page committed)
+
+    private func ready(_ body: [String: Any] = ["event": "set-cw-conversation"]) {
+        view.userContentController(view.testWebView.configuration.userContentController,
+                                   didReceive: FakeScriptMessage(name: "limechat", body: body))
+    }
+
+    func testCommitAloneDoesNotFireWidgetDidLoad() {
+        view.webView(view.testWebView, didCommit: nil)
+        XCTAssertEqual(spy.calls, [])
+    }
+
+    func testReadyFiresWidgetDidLoadOnce() {
+        view.webView(view.testWebView, didCommit: nil)
+        ready()
+        ready()
         XCTAssertEqual(spy.calls, [.didLoad])
+    }
+
+    func testWidgetDidLoadFiresAfterTokenCallback() {
+        let sandbox = TokenStoreSandbox()
+        defer { sandbox.tearDown() }
+        view.webView(view.testWebView, didCommit: nil)
+        ready(["event": "set-cw-conversation", "cw_conversation": "tok"])
+        XCTAssertEqual(spy.calls, [.token("tok"), .didLoad])
+    }
+
+    func testReadyBeforeCommitIsIgnored() {
+        ready()
+        XCTAssertEqual(spy.calls, [])
+        view.webView(view.testWebView, didCommit: nil)
+        ready()
+        XCTAssertEqual(spy.calls, [.didLoad])
+    }
+
+    func testNewCommitFiresWidgetDidLoadAgain() {
+        view.webView(view.testWebView, didCommit: nil)
+        ready()
+        view.webView(view.testWebView, didCommit: nil)
+        ready()
+        XCTAssertEqual(spy.calls, [.didLoad, .didLoad])
+    }
+
+    func testStartingALoadResetsReadyState() {
+        view.initialize(with: WidgetConfiguration(websiteToken: "t"))
+        view.webView(view.testWebView, didCommit: nil)
+        ready()
+        XCTAssertTrue(view.widgetReady)
+        view.reload()
+        XCTAssertFalse(view.pageStarted)
+        XCTAssertFalse(view.widgetReady)
     }
 
     func testMainFrameHTTPErrorIsReported() {

@@ -23,6 +23,15 @@ extension LimechatWidgetView {
         delegate?.widgetDidChangeConversationToken(token)
     }
     
+    /// The widget posts set-cw-conversation in the same task that registers its message listener,
+    /// so this is the first moment it can receive anything. Returns true the first time on this page.
+    func markWidgetReady() -> Bool {
+        guard pageStarted, !widgetReady else { return false }
+        widgetReady = true
+        sendVerifiedUser()
+        return true
+    }
+
     func sendVerifiedUser() {
         guard let user = configuration?.user,
               let identifier = user.identifier, !identifier.isEmpty,
@@ -48,7 +57,9 @@ extension LimechatWidgetView: WKScriptMessageHandler {
             case "close-widget":
                 delegate?.widgetDidRequestClose()
             case "set-cw-conversation":
+                let firstReady = markWidgetReady()
                 handleConversationTokenUpdate(body["cw_conversation"] as? String)
+                if firstReady { delegate?.widgetDidLoad() }
             case "unread_count":
                 if let count = body["count"] as? Int {
                     delegate?.widgetDidReceiveUnreadCount(count)

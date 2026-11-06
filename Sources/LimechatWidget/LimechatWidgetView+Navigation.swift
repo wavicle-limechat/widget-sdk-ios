@@ -35,9 +35,9 @@ extension LimechatWidgetView: WKNavigationDelegate {
         decisionHandler(.allow)
     }
 
-    public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        sendVerifiedUser()
-        delegate?.widgetDidLoad()
+    public func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        pageStarted = true
+        widgetReady = false
     }
     
     public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {

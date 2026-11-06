@@ -10,6 +10,10 @@ public class LimechatWidgetView: UIView {
     var configuration: WidgetConfiguration?
     var instanceId = ConversationTokenStore.defaultInstanceId
     var cwConversation: String?
+    /// true once the current document committed
+    var pageStarted = false
+    /// true once the widget posted set-cw-conversation on the current document
+    var widgetReady = false
     
     public weak var delegate: LimechatWidgetDelegate?
     
@@ -159,7 +163,8 @@ public class LimechatWidgetView: UIView {
             return
         }
         
-        let request = URLRequest(url: url)
-        webView.load(request)
+        pageStarted = false
+        widgetReady = false
+        webView.load(URLRequest(url: url))
     }
 }

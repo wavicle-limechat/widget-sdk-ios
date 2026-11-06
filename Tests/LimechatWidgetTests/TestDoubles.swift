@@ -119,12 +119,14 @@ extension XCTestCase {
         return decision
     }
 
-    /// Loads HTML into the widget's real webview at an allowed origin and waits for widgetDidLoad.
+    /// Loads HTML into the widget's real webview at an allowed origin and waits for widgetDidLoad (fired at ready).
     func loadPage(_ html: String, into view: LimechatWidgetView, spy: SpyDelegate,
                   baseURL: String = "https://app.limechat.ai/", file: StaticString = #filePath, line: UInt = #line) {
         let loaded = expectation(description: "widgetDidLoad")
         spy.onCall = { if $0 == .didLoad { loaded.fulfill() } }
-        view.testWebView.loadHTMLString(html, baseURL: URL(string: baseURL))
+        // the widget posts set-cw-conversation once it mounted; that is the ready signal
+        let readyScript = "<script>window.addEventListener('load',function(){webkit.messageHandlers.limechat.postMessage({event:'set-cw-conversation'})})</script>"
+        view.testWebView.loadHTMLString(html + readyScript, baseURL: URL(string: baseURL))
         wait(for: [loaded], timeout: 60) // first load cold-starts the WebContent process
         spy.onCall = nil
     }
