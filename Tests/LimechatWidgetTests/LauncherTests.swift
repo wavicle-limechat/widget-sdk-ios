@@ -237,11 +237,11 @@ final class LauncherTests: XCTestCase {
         XCTAssertTrue(w.subviews.first is LimechatWidgetIcon)
     }
 
-    func testPinsCurrentBehaviour_delegateSetAfterInitIsNotPassedToIcon() {
+    func testDelegateSetAfterInitIsPassedToIcon() {
         let w = LimechatWidget(configuration: config)
         let spy = SpyDelegate()
         w.delegate = spy
-        XCTAssertNil((w.subviews.first as? LimechatWidgetIcon)?.delegate)
+        XCTAssertTrue((w.subviews.first as? LimechatWidgetIcon)?.delegate === spy)
     }
 
     func testIconStyleWithCGFloatValues() {
