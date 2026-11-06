@@ -458,6 +458,16 @@ final class LauncherTests: XCTestCase {
         XCTAssertEqual(handed.count, 1)
     }
 
+    func testDismissWithoutALauncherKeepsHeldAttributes() {
+        let vc = LimechatWidgetViewController(configuration: config)
+        XCTAssertTrue(vc.setMessageAttributes(["a": 1]))
+        vc.handBackHeldAttributes()
+        var handed: [[String: Any]] = []
+        vc.onDismissWithHeldAttributes = { handed.append($0) }
+        vc.handBackHeldAttributes()
+        XCTAssertEqual(handed as NSArray, [["a": 1]] as NSArray)
+    }
+
     func testLimechatWidgetSetMessageAttributesReturnsFalseForInvalidInput() {
         let w = LimechatWidget(configuration: config)
         XCTAssertFalse(w.setMessageAttributes([:]))

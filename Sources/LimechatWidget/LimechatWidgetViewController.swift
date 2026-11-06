@@ -42,9 +42,10 @@ public class LimechatWidgetViewController: UIViewController {
     }
     
     func handBackHeldAttributes() {
-        guard let held = widgetView?.pendingMessageAttributes, !held.isEmpty else { return }
+        guard let handBack = onDismissWithHeldAttributes,
+              let held = widgetView?.pendingMessageAttributes, !held.isEmpty else { return }
         widgetView.pendingMessageAttributes = [:]
-        onDismissWithHeldAttributes?(held)
+        handBack(held)
     }
     
     public override var prefersStatusBarHidden: Bool {
