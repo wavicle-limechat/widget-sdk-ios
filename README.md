@@ -279,36 +279,6 @@ class UIKitExampleViewController: UIViewController, LimechatWidgetDelegate {
 }
 ```
 
-## Integration Comparison
-
-Both iOS and React Native SDKs are designed to be equally easy to integrate:
-
-### iOS SDK (Floating Icon)
-```swift
-// Just 3 lines of code!
-addWidgetIcon(
-    configuration: WidgetConfiguration(websiteToken: "YOUR_TOKEN"),
-    delegate: self
-)
-```
-
-### React Native SDK (Floating Icon)
-```javascript
-// Just 3 lines of code!
-<LimeChatWidget
-  websiteToken="YOUR_TOKEN"
-  onWidgetLoad={() => console.log('Widget loaded')}
-/>
-```
-
-Both SDKs provide:
-- ✅ **Default floating icon** with message icon
-- ✅ **Unread count badge** support
-- ✅ **Custom icon** support
-- ✅ **Manual presentation** option
-- ✅ **Same configuration** structure
-- ✅ **Same delegate/callback** pattern
-
 ## Configuration
 
 ### WidgetConfiguration

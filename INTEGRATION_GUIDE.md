@@ -8,7 +8,6 @@
 - [SwiftUI Integration](#swiftui-integration)
 - [Customization Options](#customization-options)
 - [API Reference](#api-reference)
-- [Comparison with React Native SDK](#comparison-with-react-native-sdk)
 - [Best Practices](#best-practices)
 
 ## Requirements
@@ -389,67 +388,6 @@ enum WidgetError: LocalizedError {
 }
 ```
 
-## Comparison with React Native SDK
-
-### Similarities
-
-Both iOS Native and React Native SDKs share:
-- Same website token configuration
-- User identification parameters
-- Locale support
-- Custom attributes
-- Event callbacks (onLoad, onClose, onError)
-
-### Key Differences
-
-| Feature | React Native SDK | iOS Native SDK |
-|---------|-----------------|----------------|
-| **Integration** | JSX Component | UIViewController/UIView |
-| **Custom Button** | `customButton` prop | Custom UIButton with presentation |
-| **Unread Count** | Built-in with styling | Implement manually |
-| **Configuration** | Props-based | WidgetConfiguration object |
-| **Styling** | Style props | Native iOS UI |
-| **Full Screen** | Modal/Navigation | LimechatWidgetViewController |
-| **Language** | JavaScript/TypeScript | Swift/Objective-C |
-
-### React Native Example
-```jsx
-<LimeChatWidget
-  websiteToken="MEFFACy4xaovJayhLjSt836h"
-  user={user}
-  locale="en"
-  customAttributes={customAttributes}
-  onWidgetLoad={handleWidgetLoad}
-  onWidgetClose={handleWidgetClose}
-  onError={handleError}
-  customButton={<CustomButton />}
-  unreadCountStyle={{ top: -20 }}
-/>
-```
-
-### iOS Native Equivalent
-```swift
-// Configuration
-let config = WidgetConfiguration(
-    websiteToken: "MEFFACy4xaovJayhLjSt836h",
-    locale: "en",
-    user: user,
-    customAttributes: customAttributes
-)
-
-// Present modally
-LimechatWidgetViewController.present(
-    from: self,
-    configuration: config,
-    delegate: self
-)
-
-// Custom button
-@IBAction func customButtonTapped(_ sender: UIButton) {
-    presentWidget()
-}
-```
-
 ## Best Practices
 
 ### 1. Memory Management
@@ -487,11 +425,7 @@ let user = WidgetConfiguration.User(
 )
 ```
 
-### 4. Theme Handling
-
-The widget has no dark mode today. `colorScheme` has no visible effect, so there is nothing to update when the system theme changes.
-
-### 5. Localization
+### 4. Localization
 
 Support multiple languages:
 ```swift

@@ -6,6 +6,8 @@ This guide explains how to publish the Limechat iOS SDK for public use.
 
 ### 1. Prepare the Repository
 
+`./scripts/release.sh <version>` (from `main`, clean tree) builds, tests, tags and pushes. The manual steps are:
+
 1. **Ensure all files are committed:**
    ```bash
    git add .
