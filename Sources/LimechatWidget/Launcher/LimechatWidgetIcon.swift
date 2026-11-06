@@ -127,6 +127,15 @@ public class LimechatWidgetIcon: UIView {
     /// Initialize the widget icon with configuration
     public func initialize(with configuration: WidgetConfiguration) {
         self.configuration = configuration
+        
+        guard customIcon == nil else { return }
+        WidgetConfigFetcher.fetchIcon(configuration: configuration) { [weak self] image in
+            guard let image = image else { return }
+            DispatchQueue.main.async {
+                guard let self = self, self.customIcon == nil else { return }
+                self.iconImageView.image = image
+            }
+        }
     }
     
     /// Update unread count
