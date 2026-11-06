@@ -172,10 +172,6 @@ public class LimechatWidget: UIView {
     // MARK: - Actions
     
     @objc private func handleButtonPress() {
-        openWidget()
-    }
-    
-    private func openWidget() {
         open()
     }
     

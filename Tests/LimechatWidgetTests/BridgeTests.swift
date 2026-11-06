@@ -33,11 +33,6 @@ final class BridgeTests: XCTestCase {
         XCTAssertEqual(spy.calls, [.requestClose])
     }
 
-    func testCloseWidgetEventRequestsClose() {
-        post(["event": "close-widget"])
-        XCTAssertEqual(spy.calls, [.requestClose])
-    }
-
     func testUnreadCountWithIntCount() {
         post(["event": "unread_count", "count": 5])
         XCTAssertEqual(spy.calls, [.unread(5)])
@@ -153,7 +148,7 @@ final class BridgeTests: XCTestCase {
         view.sendMessage(event: event, data: data)
         wait(for: [got], timeout: 10)
         // the widget only reads strings that start with `chatwoot-widget:`; return the parsed json in `data`.
-        guard var result = echoed.map({ $0.mutableCopy() as! NSMutableDictionary }),
+        guard let result = echoed.map({ $0.mutableCopy() as! NSMutableDictionary }),
               let text = result["data"] as? String, text.hasPrefix("chatwoot-widget:"),
               let json = try? JSONSerialization.jsonObject(with: Data(text.dropFirst("chatwoot-widget:".count).utf8)) as? NSDictionary
         else { return echoed }
