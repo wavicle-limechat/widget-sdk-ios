@@ -77,7 +77,7 @@ public class LimechatWidgetView: UIView {
     // MARK: - Public Methods
     
     /// Initialize the widget with configuration
-    public func initialize(with configuration: WidgetConfiguration) {
+    public func initialize(with configuration: WidgetConfiguration, initialMessage: String? = nil, initialMessageData: [String: Any]? = nil) {
         self.configuration = configuration
         
         // same as android: instanceId or "default"; external token wins over the stored one
@@ -93,7 +93,7 @@ public class LimechatWidgetView: UIView {
         }
         
         installUserScript()
-        loadWidget()
+        loadWidget(openMessage: initialMessage, openPayload: initialMessageData)
     }
     
     /// Send a message to the widget
@@ -117,6 +117,18 @@ public class LimechatWidgetView: UIView {
         }
     }
     
+    /// Reload the widget and open it with a message
+    public func open(message: String) {
+        guard configuration != nil else { return }
+        loadWidget(openMessage: message)
+    }
+    
+    /// Reload the widget and open it with a `{content, submitted_values}` payload
+    public func open(messageData: [String: Any]) {
+        guard configuration != nil else { return }
+        loadWidget(openPayload: messageData)
+    }
+    
     /// Reload the widget
     public func reload() {
         loadWidget()
@@ -134,9 +146,9 @@ public class LimechatWidgetView: UIView {
         controller.addUserScript(WKUserScript(source: source, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
     }
     
-    private func loadWidget() {
+    private func loadWidget(openMessage: String? = nil, openPayload: [String: Any]? = nil) {
         guard let configuration = configuration,
-              let url = configuration.widgetURL(cwConversation: cwConversation) else {
+              let url = configuration.widgetURL(cwConversation: cwConversation, openMessage: openMessage, openPayload: openPayload) else {
             let error = WidgetError.configurationError("Invalid configuration or URL")
             delegate?.widgetDidReceiveError(error)
             return

@@ -7,13 +7,17 @@ public class LimechatWidgetViewController: UIViewController {
     
     private var widgetView: LimechatWidgetView!
     private var configuration: WidgetConfiguration
+    private var initialMessage: String?
+    private var initialMessageData: [String: Any]?
     
     public weak var widgetDelegate: LimechatWidgetDelegate?
     
     // MARK: - Initialization
     
-    public init(configuration: WidgetConfiguration) {
+    public init(configuration: WidgetConfiguration, initialMessage: String? = nil, initialMessageData: [String: Any]? = nil) {
         self.configuration = configuration
+        self.initialMessage = initialMessage
+        self.initialMessageData = initialMessageData
         super.init(nibName: nil, bundle: nil)
         setupModalPresentation()
     }
@@ -61,7 +65,7 @@ public class LimechatWidgetViewController: UIViewController {
     }
     
     private func setupWidget() {
-        widgetView.initialize(with: configuration)
+        widgetView.initialize(with: configuration, initialMessage: initialMessage, initialMessageData: initialMessageData)
     }
     
     // MARK: - Public Methods
@@ -69,6 +73,16 @@ public class LimechatWidgetViewController: UIViewController {
     /// Send a message to the widget
     public func sendMessage(event: String, data: [String: Any] = [:]) {
         widgetView.sendMessage(event: event, data: data)
+    }
+    
+    /// Reload the widget and open it with a message
+    public func open(message: String) {
+        widgetView.open(message: message)
+    }
+    
+    /// Reload the widget and open it with a `{content, submitted_values}` payload
+    public func open(messageData: [String: Any]) {
+        widgetView.open(messageData: messageData)
     }
     
     /// Reload the widget
@@ -81,10 +95,12 @@ public class LimechatWidgetViewController: UIViewController {
         from viewController: UIViewController,
         configuration: WidgetConfiguration,
         delegate: LimechatWidgetDelegate? = nil,
+        initialMessage: String? = nil,
+        initialMessageData: [String: Any]? = nil,
         animated: Bool = true,
         completion: (() -> Void)? = nil
     ) {
-        let widgetVC = LimechatWidgetViewController(configuration: configuration)
+        let widgetVC = LimechatWidgetViewController(configuration: configuration, initialMessage: initialMessage, initialMessageData: initialMessageData)
         widgetVC.widgetDelegate = delegate
         viewController.present(widgetVC, animated: animated, completion: completion)
     }

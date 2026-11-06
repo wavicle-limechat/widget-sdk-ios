@@ -49,6 +49,16 @@ final class LifecycleTests: XCTestCase {
         XCTAssertEqual(view.testWebView.configuration.userContentController.userScripts.count, 0)
     }
 
+    func testOpenBeforeInitializeDoesNothing() {
+        let view = LimechatWidgetView(frame: .zero)
+        let spy = SpyDelegate()
+        view.delegate = spy
+        view.open(message: "hi")
+        view.open(messageData: ["content": "hi"])
+        XCTAssertNil(view.testWebView.url)
+        XCTAssertEqual(spy.calls, [])
+    }
+
     /// WebKit drops its last internal reference to a WKWebView on a later run loop turn.
     private func waitUntilReleased(timeout: TimeInterval = 5, _ released: () -> Bool) {
         let deadline = Date().addingTimeInterval(timeout)
