@@ -40,6 +40,11 @@ extension LimechatWidgetView: WKNavigationDelegate {
         widgetReady = false
     }
     
+    public func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        pageStarted = false
+        widgetReady = false
+    }
+
     public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         let widgetError = WidgetError.webViewError("Failed to load widget: \(error.localizedDescription)")
         delegate?.widgetDidReceiveError(widgetError)

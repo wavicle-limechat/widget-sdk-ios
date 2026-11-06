@@ -170,6 +170,20 @@ final class NavigationTests: XCTestCase {
         XCTAssertFalse(view.widgetReady)
     }
 
+    func testOpenAfterWebProcessTerminationHoldsAndReloads() {
+        view.initialize(with: WidgetConfiguration(websiteToken: "t"))
+        view.webView(view.testWebView, didCommit: nil)
+        ready()
+        XCTAssertTrue(view.widgetReady)
+        view.webViewWebContentProcessDidTerminate(view.testWebView)
+        XCTAssertFalse(view.widgetReady)
+        XCTAssertFalse(view.pageStarted)
+        view.open(message: "hi")
+        XCTAssertEqual(view.pendingOpen as? String, "hi")
+        XCTAssertTrue(view.testWebView.isLoading)
+        view.testWebView.stopLoading()
+    }
+
     func testMainFrameHTTPErrorIsReported() {
         XCTAssertEqual(decide(view, statusCode: 404), .allow)
         XCTAssertEqual(decide(view, statusCode: 500), .allow)
