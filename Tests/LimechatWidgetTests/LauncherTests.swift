@@ -145,6 +145,16 @@ final class LauncherTests: XCTestCase {
         XCTAssertEqual(spy.calls, [.error("Configuration Error: Cannot find view controller")])
     }
 
+    func testAddWidgetIconWithCustomIconSkipsTheIconFetch() {
+        CountingURLProtocol.count = 0
+        URLProtocol.registerClass(CountingURLProtocol.self)
+        defer { URLProtocol.unregisterClass(CountingURLProtocol.self) }
+        let own = WidgetConfiguration(websiteToken: "t", baseURL: "https://custom-icon-test.invalid")
+        _ = UIViewController().addWidgetIcon(configuration: own, customIcon: UIImage())
+        RunLoop.main.run(until: Date().addingTimeInterval(1))
+        XCTAssertEqual(CountingURLProtocol.count, 0)
+    }
+
     func testPinsCurrentBehaviour_iconSizeChangeAfterAddWidgetIconIsIgnored() {
         let vc = UIViewController()
         let icon = vc.addWidgetIcon(configuration: config)
@@ -305,4 +315,15 @@ final class LauncherTests: XCTestCase {
         XCTAssertTrue(s.customButton === button)
         XCTAssertTrue(s.delegate === spy)
     }
+}
+
+final class CountingURLProtocol: URLProtocol {
+    static var count = 0
+    override class func canInit(with request: URLRequest) -> Bool { request.url?.host == "custom-icon-test.invalid" }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        CountingURLProtocol.count += 1
+        client?.urlProtocol(self, didFailWithError: URLError(.cancelled))
+    }
+    override func stopLoading() {}
 }

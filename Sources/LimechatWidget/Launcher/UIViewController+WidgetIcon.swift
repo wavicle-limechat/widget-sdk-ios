@@ -16,9 +16,9 @@ public extension UIViewController {
     ) -> LimechatWidgetIcon {
         
         let icon = LimechatWidgetIcon()
-        icon.initialize(with: configuration)
         icon.delegate = delegate
         icon.customIcon = customIcon
+        icon.initialize(with: configuration)
         
         view.addSubview(icon)
         
