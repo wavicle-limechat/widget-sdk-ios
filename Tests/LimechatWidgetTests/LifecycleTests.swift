@@ -98,7 +98,7 @@ final class LifecycleTests: XCTestCase {
         vc.loadViewIfNeeded()
         let widget = vc.view.allSubviews(of: LimechatWidgetView.self).first!
         widget.userContentController(widget.testWebView.configuration.userContentController,
-                                     didReceive: FakeScriptMessage(name: "limechatNative", body: ["event": "unread_count", "count": 7]))
+                                     didReceive: FakeScriptMessage(name: "limechat", body: ["event": "unread_count", "count": 7]))
         XCTAssertEqual(spy.calls, [.unread(7)])
     }
 }

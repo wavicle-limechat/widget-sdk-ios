@@ -46,12 +46,6 @@ extension LimechatWidgetView: WKNavigationDelegate {
             return
         }
         
-        if url.scheme == "limechat" && url.host == "close" {
-            delegate?.widgetDidRequestClose()
-            decisionHandler(.cancel)
-            return
-        }
-        
         if isWidgetHostURL(url) {
             decisionHandler(.allow)
         } else {

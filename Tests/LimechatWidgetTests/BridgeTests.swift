@@ -21,7 +21,7 @@ final class BridgeTests: XCTestCase {
         super.tearDown()
     }
 
-    private func post(_ body: Any, name: String = "limechatNative") {
+    private func post(_ body: Any, name: String = "limechat") {
         view.userContentController(view.testWebView.configuration.userContentController,
                                    didReceive: FakeScriptMessage(name: name, body: body))
     }
@@ -29,7 +29,7 @@ final class BridgeTests: XCTestCase {
     // MARK: handler parsing (direct)
 
     func testCloseEventRequestsClose() {
-        post(["event": "close"])
+        post(["event": "close-widget"])
         XCTAssertEqual(spy.calls, [.requestClose])
     }
 
@@ -79,7 +79,7 @@ final class BridgeTests: XCTestCase {
     }
 
     func testTypeFieldIsUsedWhenEventIsMissing_typeCloseCloses() {
-        post(["type": "close"])
+        post(["type": "close-widget"])
         XCTAssertEqual(spy.calls, [.requestClose])
     }
 
@@ -93,71 +93,52 @@ final class BridgeTests: XCTestCase {
         XCTAssertEqual(spy.calls, [.message([:])])
     }
 
-    func testJSONStringBodyAndPrefixedStringBodyAreParsed_invalidStringIsIgnored() {
-        post(#"{"event":"close"}"#)
-        post(#"limechat-widget:{"event":"close"}"#)
-        post("not json")
-        XCTAssertEqual(spy.calls, [.requestClose, .requestClose])
-    }
-
     func testNonDictionaryBodiesAreIgnored() {
         post([1, 2, 3])
+        post(#"{"event":"close-widget"}"#)
         post(NSNumber(value: 1))
         post(NSNull())
         XCTAssertEqual(spy.calls, [])
     }
 
-    func testListensOnLimechatAndLimechatNative_otherNamesAreIgnored() {
-        post(["event": "close"], name: "limechat")
-        post(["event": "close"], name: "LimechatNative")
-        post(["event": "close"], name: "limechatnative")
+    func testListensOnLimechatOnly_otherNamesAreIgnored() {
+        post(["event": "close-widget"], name: "limechat")
+        post(["event": "close-widget"], name: "limechatNative")
+        post(["event": "close-widget"], name: "Limechat")
         XCTAssertEqual(spy.calls, [.requestClose])
     }
 
     func testNoDelegateDoesNotCrash() {
         view.delegate = nil
-        post(["event": "close"])
+        post(["event": "close-widget"])
         post(["event": "x"])
     }
 
     // MARK: handler registration (real WKWebView + JS)
 
-    func testRegistersLimechatAndLimechatNativeHandlers() {
+    func testRegistersOnlyLimechatHandler() {
         loadPage("<html><body></body></html>", into: view, spy: spy)
         let web = view.testWebView
-        XCTAssertEqual(evalJS("typeof window.webkit.messageHandlers.limechatNative", in: web) as? String, "object")
+        XCTAssertEqual(evalJS("typeof window.webkit.messageHandlers.limechatNative", in: web) as? String, "undefined")
         XCTAssertEqual(evalJS("typeof window.webkit.messageHandlers.limechat", in: web) as? String, "object")
     }
 
-    func testRealJSPostToLimechatNativeReachesDelegate() {
+    func testRealJSPostToLimechatReachesDelegate() {
         loadPage("<html><body></body></html>", into: view, spy: spy)
         let got = expectation(description: "close")
         spy.onCall = { if $0 == .requestClose { got.fulfill() } }
-        _ = evalJS("window.webkit.messageHandlers.limechatNative.postMessage({event: 'close'}); 1", in: view.testWebView)
+        _ = evalJS("window.webkit.messageHandlers.limechat.postMessage({event: 'close-widget'}); 1", in: view.testWebView)
         wait(for: [got], timeout: 10)
         XCTAssertEqual(spy.calls, [.didLoad, .requestClose])
     }
 
-    func testRealJSPostOfJSONStringIsParsed() {
-        loadPage("<html><body></body></html>", into: view, spy: spy)
-        // json string then a sentinel object; both arrive in order.
-        let got = expectation(description: "sentinel")
-        spy.onCall = { if case .message = $0 { got.fulfill() } }
-        _ = evalJS(#"""
-            window.webkit.messageHandlers.limechatNative.postMessage(JSON.stringify({event: 'close'}));
-            window.webkit.messageHandlers.limechatNative.postMessage({event: 'sentinel'}); 1
-            """#, in: view.testWebView)
-        wait(for: [got], timeout: 10)
-        XCTAssertEqual(spy.calls, [.didLoad, .requestClose, .message(["event": "sentinel"])])
-    }
-
     // MARK: sendMessage (native -> js)
 
-    /// Page echoes every window `message` event back over limechatNative as {event:'echo', data, isString}.
+    /// Page echoes every window `message` event back over limechat as {event:'echo', data, isString}.
     private let echoPage = """
     <html><body><script>
     window.addEventListener('message', function (e) {
-      window.webkit.messageHandlers.limechatNative.postMessage({event: 'echo', data: e.data, isString: typeof e.data === 'string'});
+      window.webkit.messageHandlers.limechat.postMessage({event: 'echo', data: e.data, isString: typeof e.data === 'string'});
     });
     </script></body></html>
     """
@@ -234,24 +215,9 @@ final class BridgeTests: XCTestCase {
         XCTAssertEqual(spy.calls, [.requestClose])
     }
 
-    func testUnreadCountStillWorksOnLimechatHandlerAndFromJSONString() {
+    func testUnreadCountStillWorksOnLimechatHandler() {
         post(["event": "unread_count", "count": 2], name: "limechat")
-        post(#"{"event":"unread_count","count":4}"#)
-        XCTAssertEqual(spy.calls, [.unread(2), .unread(4)])
-    }
-
-    func testPrefixedStringWithUnknownEventIsAMessage() {
-        post(#"limechat-widget:{"event":"x","n":1}"#, name: "limechat")
-        XCTAssertEqual(spy.calls, [.message(["event": "x", "n": 1])])
-    }
-
-    func testInvalidStringBodiesAreIgnored() {
-        post("limechat-widget:not json")
-        post("[1,2]")
-        post(#""just a string""#)
-        post("")
-        post(#"limechat-widget:"#)
-        XCTAssertEqual(spy.calls, [])
+        XCTAssertEqual(spy.calls, [.unread(2)])
     }
 
     func testRealJSPostToLimechatLikeWebViewHelperReachesDelegate() {
@@ -265,13 +231,4 @@ final class BridgeTests: XCTestCase {
         XCTAssertEqual(spy.calls, [.didLoad, .requestClose])
     }
 
-    func testRealJSPrefixedStringPostIsParsed() {
-        loadPage("<html><body></body></html>", into: view, spy: spy)
-        let got = expectation(description: "close")
-        spy.onCall = { if $0 == .requestClose { got.fulfill() } }
-        _ = evalJS("window.webkit.messageHandlers.limechat.postMessage('limechat-widget:' + JSON.stringify({type: 'close-widget'})); 1",
-                   in: view.testWebView)
-        wait(for: [got], timeout: 10)
-        XCTAssertEqual(spy.calls, [.didLoad, .requestClose])
-    }
 }

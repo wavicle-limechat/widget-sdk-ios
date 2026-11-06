@@ -130,13 +130,11 @@ final class TokenTests: XCTestCase {
         XCTAssertNil(sandbox.defaults.string(forKey: "default"))
     }
 
-    func testSetCwConversationViaTypeOnlyLimechatNativeAndPrefixedString() {
+    func testSetCwConversationViaTypeOnly() {
         let view = makeView(WidgetConfiguration(websiteToken: "t", baseURL: base))
-        post(["type": "set-cw-conversation", "cw_conversation": "t1"], to: view, name: "limechatNative")
-        post(#"limechat-widget:{"event":"set-cw-conversation","cw_conversation":"t2"}"#, to: view)
-        post(#"{"event":"set-cw-conversation","cw_conversation":"t3"}"#, to: view)
-        XCTAssertEqual(spy.calls, [.token("t1"), .token("t2"), .token("t3")])
-        XCTAssertEqual(sandbox.defaults.string(forKey: "default"), "t3")
+        post(["type": "set-cw-conversation", "cw_conversation": "t1"], to: view, name: "limechat")
+        XCTAssertEqual(spy.calls, [.token("t1")])
+        XCTAssertEqual(sandbox.defaults.string(forKey: "default"), "t1")
     }
 
     // MARK: external mode

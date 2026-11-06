@@ -22,15 +22,9 @@ final class NavigationTests: XCTestCase {
         XCTAssertEqual(spy.calls, [])
     }
 
-    func testLimechatCloseIsCancelledAndRequestsClose() {
+    func testLimechatCloseUrlIsCancelledAndDoesNotRequestClose() {
         XCTAssertEqual(decide(view, url: URL(string: "limechat://close")), .cancel)
-        XCTAssertEqual(spy.calls, [.requestClose])
-    }
-
-    func testLimechatCloseWithPathAndQueryStillCloses() {
-        XCTAssertEqual(decide(view, url: URL(string: "limechat://close/x?y=1")), .cancel)
-        XCTAssertEqual(decide(view, url: URL(string: "limechat://close"), type: .linkActivated), .cancel)
-        XCTAssertEqual(spy.calls, [.requestClose, .requestClose])
+        XCTAssertEqual(spy.calls, [])
     }
 
     func testPinsCurrentBehaviour_limechatCloseMatchIsCaseSensitive() {
