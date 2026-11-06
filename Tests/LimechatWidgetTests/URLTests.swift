@@ -242,4 +242,11 @@ final class URLTests: XCTestCase {
         XCTAssertNil(value("lc_open_message", url))
         XCTAssertNil(value("lc_open_payload", url))
     }
+
+    func testNonJSONCustomAttributesAndOpenPayloadAreOmittedWithoutCrashing() {
+        let c = WidgetConfiguration(websiteToken: "t", customAttributes: ["when": Date()])
+        let url = c.widgetURL(cwConversation: nil, openPayload: ["sentAt": Date()])
+        XCTAssertNil(value("custom_attributes", url))
+        XCTAssertNil(value("lc_open_payload", url))
+    }
 }

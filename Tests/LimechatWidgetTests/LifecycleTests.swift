@@ -59,6 +59,16 @@ final class LifecycleTests: XCTestCase {
         XCTAssertEqual(spy.calls, [])
     }
 
+    func testNonJSONValuesReportAnErrorInsteadOfCrashing() {
+        let view = LimechatWidgetView(frame: .zero)
+        let spy = SpyDelegate()
+        view.delegate = spy
+        view.initialize(with: WidgetConfiguration(websiteToken: "t"))
+        view.sendMessage(event: "e", data: ["when": Date()])
+        view.open(messageData: ["sentAt": Date()])
+        XCTAssertEqual(spy.calls, [.error("WebView Error: Failed to serialize message"), .error("WebView Error: Failed to serialize message")])
+    }
+
     /// WebKit drops its last internal reference to a WKWebView on a later run loop turn.
     private func waitUntilReleased(timeout: TimeInterval = 5, _ released: () -> Bool) {
         let deadline = Date().addingTimeInterval(timeout)

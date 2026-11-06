@@ -101,7 +101,8 @@ public class LimechatWidgetView: UIView {
         var message = data
         message["event"] = event
         
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: message),
+        guard JSONSerialization.isValidJSONObject(message),
+              let jsonData = try? JSONSerialization.data(withJSONObject: message),
               let jsonString = String(data: jsonData, encoding: .utf8) else {
             let error = WidgetError.webViewError("Failed to serialize message")
             delegate?.widgetDidReceiveError(error)
@@ -126,6 +127,10 @@ public class LimechatWidgetView: UIView {
     /// Reload the widget and open it with a `{content, submitted_values}` payload
     public func open(messageData: [String: Any]) {
         guard configuration != nil else { return }
+        guard JSONSerialization.isValidJSONObject(messageData) else {
+            delegate?.widgetDidReceiveError(.webViewError("Failed to serialize message"))
+            return
+        }
         loadWidget(openPayload: messageData)
     }
     

@@ -23,6 +23,7 @@ extension WidgetConfiguration {
         
         if let customAttributes = customAttributes,
            !customAttributes.isEmpty,
+           JSONSerialization.isValidJSONObject(customAttributes),
            let jsonData = try? JSONSerialization.data(withJSONObject: customAttributes),
            let jsonString = String(data: jsonData, encoding: .utf8) {
             queryItems.append(URLQueryItem(name: "custom_attributes", value: jsonString))
@@ -41,6 +42,7 @@ extension WidgetConfiguration {
             queryItems.append(URLQueryItem(name: "lc_open_message", value: openMessage))
         }
         if let openPayload = openPayload,
+           JSONSerialization.isValidJSONObject(openPayload),
            let data = try? JSONSerialization.data(withJSONObject: openPayload),
            let json = String(data: data, encoding: .utf8) {
             queryItems.append(URLQueryItem(name: "lc_open_payload", value: json.replacingOccurrences(of: "%", with: "\\u0025")))
