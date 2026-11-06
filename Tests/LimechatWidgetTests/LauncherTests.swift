@@ -192,6 +192,27 @@ final class LauncherTests: XCTestCase {
         XCTAssertNotNil(badge(w))
     }
 
+    func testLimechatWidgetOpenPresentsTheWidgetWithTheMessage() {
+        let host = UIViewController()
+        let window = UIWindow(frame: UIScreen.main.bounds)
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        let w = LimechatWidget(configuration: config)
+        host.view.addSubview(w)
+        w.open(message: "hi")
+        let presented = host.presentedViewController as? LimechatWidgetViewController
+        XCTAssertNotNil(presented)
+        let url = presented?.view.allSubviews(of: LimechatWidgetView.self).first?.testWebView.url
+        XCTAssertTrue(url?.absoluteString.contains("lc_open_message=hi") == true, "\(String(describing: url))")
+        window.isHidden = true
+    }
+
+    func testLimechatWidgetOpenWithoutViewControllerIsSilent() {
+        let w = LimechatWidget(configuration: config)
+        w.open(message: "hi")
+        w.open()
+    }
+
     func testLimechatWidgetCustomButtonTapWithoutViewControllerIsSilent() {
         let spy = SpyDelegate()
         let w = LimechatWidget(configuration: config, customButton: UIView(), delegate: spy)

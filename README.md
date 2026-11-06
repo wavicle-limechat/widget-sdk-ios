@@ -354,6 +354,9 @@ LimechatWidgetViewController.present(from: self, configuration: configuration, i
 // later: reloads the widget with the message
 widgetView.open(message: "Hi")
 widgetView.open(messageData: ["content": "Hi", "submitted_values": ["plan": "pro"]])
+
+// from the launcher view (`LimechatWidget`): presents the widget with the message
+launcher.open(message: "Hi")
 ```
 
 ### Floating Widget Icon Customization

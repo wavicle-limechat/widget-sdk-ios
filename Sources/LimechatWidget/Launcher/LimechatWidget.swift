@@ -175,11 +175,16 @@ public class LimechatWidget: UIView {
     }
     
     private func openWidget() {
-        guard let viewController = findViewController() else { return }
-        LimechatWidgetViewController.present(from: viewController, configuration: configuration, delegate: delegate)
+        open()
     }
     
     // MARK: - Public Methods
+    
+    /// Present the widget, optionally with a message or a `{content, submitted_values}` payload
+    public func open(message: String? = nil, messageData: [String: Any]? = nil) {
+        guard let viewController = findViewController() else { return }
+        LimechatWidgetViewController.present(from: viewController, configuration: configuration, delegate: delegate, initialMessage: message, initialMessageData: messageData)
+    }
     
     /// Update unread count
     public func setUnreadCount(_ count: Int) {
