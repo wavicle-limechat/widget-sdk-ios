@@ -145,3 +145,13 @@ extension LimechatWidgetViewController: LimechatWidgetDelegate {
         widgetDelegate?.widgetDidChangeConversationToken(token)
     }
 }
+
+extension LimechatWidgetViewController {
+    /// The widget presented from `host` with the same website token and instance, if any
+    static func presented(from host: UIViewController?, for configuration: WidgetConfiguration) -> LimechatWidgetViewController? {
+        guard let presented = host?.presentedViewController as? LimechatWidgetViewController,
+              presented.configuration.websiteToken == configuration.websiteToken,
+              presented.configuration.instanceId == configuration.instanceId else { return nil }
+        return presented
+    }
+}

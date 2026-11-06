@@ -257,13 +257,17 @@ final class LauncherTests: XCTestCase {
         window.rootViewController = host
         window.makeKeyAndVisible()
         let a = LimechatWidget(configuration: WidgetConfiguration(websiteToken: "tokenA"))
-        let b = LimechatWidget(configuration: WidgetConfiguration(websiteToken: "tokenB"))
+        let spyB = SpyDelegate()
+        let b = LimechatWidget(configuration: WidgetConfiguration(websiteToken: "tokenB"), delegate: spyB)
         host.view.addSubview(a)
         host.view.addSubview(b)
         a.open(message: "for A")
         let first = host.presentedViewController
+        let undelivered = SpyDelegate.Call.error("WebView Error: Another view controller is presented, message not delivered")
         b.open(message: "for B")
+        XCTAssertEqual(spyB.calls, [undelivered])
         b.open(messageData: ["content": "for B"])
+        XCTAssertEqual(spyB.calls, [undelivered, undelivered])
         XCTAssertTrue(host.presentedViewController === first)
         let presented = host.presentedViewController as? LimechatWidgetViewController
         let url = presented?.view.allSubviews(of: LimechatWidgetView.self).first?.testWebView.url
@@ -271,6 +275,24 @@ final class LauncherTests: XCTestCase {
         XCTAssertFalse(url?.absoluteString.contains("for%20B") == true, "\(String(describing: url))")
         let view = presented?.view.allSubviews(of: LimechatWidgetView.self).first
         XCTAssertEqual(view?.pendingOpen as? String, "for A")
+        window.isHidden = true
+    }
+
+    func testLimechatWidgetOpenWithNoMessageWhileAnotherIsOpenIsSilent() {
+        let host = UIViewController()
+        let window = UIWindow(frame: UIScreen.main.bounds)
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        let a = LimechatWidget(configuration: WidgetConfiguration(websiteToken: "tokenA"))
+        let spyB = SpyDelegate()
+        let b = LimechatWidget(configuration: WidgetConfiguration(websiteToken: "tokenB"), delegate: spyB)
+        host.view.addSubview(a)
+        host.view.addSubview(b)
+        a.open(message: "for A")
+        let first = host.presentedViewController
+        b.open()
+        XCTAssertTrue(host.presentedViewController === first)
+        XCTAssertEqual(spyB.calls, [])
         window.isHidden = true
     }
 
