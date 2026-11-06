@@ -223,10 +223,17 @@ final class URLTests: XCTestCase {
     func testOpenMessageRoundTripsAndComesAfterCwConversation() {
         let c = WidgetConfiguration(websiteToken: "t", conversationToken: "jwt")
         let url = c.widgetURL(cwConversation: nil, openMessage: "50% off + free")
-        XCTAssertEqual(value("lc_open_message", url), "50% off + free")
+        // the widget decodes the value a second time
+        XCTAssertEqual(value("lc_open_message", url)?.removingPercentEncoding, "50% off + free")
         let names = items(url).map(\.name)
         XCTAssertEqual(Array(names.suffix(2)), ["cw_conversation", "lc_open_message"])
-        XCTAssertTrue(url!.absoluteString.hasSuffix("lc_open_message=50%25%20off%20%2B%20free"), url!.absoluteString)
+        XCTAssertTrue(url!.absoluteString.hasSuffix("lc_open_message=50%2525%20off%20%2B%20free"), url!.absoluteString)
+    }
+
+    func testOpenMessagePercentIsEscapedSoTheWidgetsSecondDecodeKeepsIt() {
+        let url = WidgetConfiguration(websiteToken: "t").widgetURL(cwConversation: nil, openMessage: "a%20b")
+        let once = value("lc_open_message", url)!
+        XCTAssertEqual(once.removingPercentEncoding, "a%20b")
     }
 
     func testOpenPayloadPercentIsEscapedInsideTheJSON() throws {

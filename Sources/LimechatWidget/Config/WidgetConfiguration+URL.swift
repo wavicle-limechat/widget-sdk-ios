@@ -39,7 +39,7 @@ extension WidgetConfiguration {
         }
         
         if let openMessage = openMessage {
-            queryItems.append(URLQueryItem(name: "lc_open_message", value: openMessage))
+            queryItems.append(URLQueryItem(name: "lc_open_message", value: openMessage.replacingOccurrences(of: "%", with: "%25")))
         }
         if let openPayload = openPayload,
            JSONSerialization.isValidJSONObject(openPayload),
