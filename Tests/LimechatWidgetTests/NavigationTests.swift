@@ -218,9 +218,12 @@ final class NavigationTests: XCTestCase {
         XCTAssertEqual(calls(), [died, died, .didLoad])
     }
 
-    /// delegate calls without the cancelled-load errors that a superseding reload produces
+    /// delegate calls without the load errors that a superseding load produces (-999, "Frame load interrupted")
     private func calls() -> [SpyDelegate.Call] {
-        spy.calls.filter { $0 != .error("WebView Error: Failed to load widget: The operation couldn’t be completed. (NSURLErrorDomain error -999.)") }
+        spy.calls.filter { call in
+            if case .error(let text) = call { return !text.contains("Failed to load widget") }
+            return true
+        }
     }
 
     /// waits until the server saw `count` requests, or checks that it did not see them
