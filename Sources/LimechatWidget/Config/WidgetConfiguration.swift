@@ -30,6 +30,9 @@ public struct WidgetConfiguration {
     /// Storage key for the internally managed token (android `instanceId`). nil or blank -> "default"
     public let instanceId: String?
     
+    /// Hides the attachment button in the widget (`hide_file_picker`)
+    public let hideFilePicker: Bool
+    
     /// Color scheme options
     public enum ColorScheme: String, CaseIterable {
         case light = "light"
@@ -88,7 +91,8 @@ public struct WidgetConfiguration {
         baseURL: String = "https://app.limechat.ai",
         conversationToken: String? = nil,
         onConversationTokenChange: ((String) -> Void)? = nil,
-        instanceId: String? = nil
+        instanceId: String? = nil,
+        hideFilePicker: Bool = false
     ) {
         self.websiteToken = websiteToken
         self.locale = locale
@@ -99,5 +103,6 @@ public struct WidgetConfiguration {
         self.conversationToken = conversationToken
         self.onConversationTokenChange = onConversationTokenChange
         self.instanceId = instanceId
+        self.hideFilePicker = hideFilePicker
     }
 }

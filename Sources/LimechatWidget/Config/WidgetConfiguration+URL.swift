@@ -33,6 +33,10 @@ extension WidgetConfiguration {
             queryItems.append(URLQueryItem(name: "cw_conversation", value: token))
         }
         
+        if hideFilePicker {
+            queryItems.append(URLQueryItem(name: "hide_file_picker", value: "true"))
+        }
+        
         if let openMessage = openMessage {
             queryItems.append(URLQueryItem(name: "lc_open_message", value: openMessage))
         }

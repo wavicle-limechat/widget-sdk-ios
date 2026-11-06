@@ -205,6 +205,19 @@ final class URLTests: XCTestCase {
         XCTAssertTrue(url!.absoluteString.hasSuffix("cw_conversation=eyJ%2Ba/b%3Dc.d_e-f"), url!.absoluteString)
     }
 
+    // MARK: hide_file_picker
+
+    func testHideFilePickerIsSentWhenTrueAndComesBeforeOpenParams() {
+        let c = WidgetConfiguration(websiteToken: "t", conversationToken: "jwt", hideFilePicker: true)
+        let url = c.widgetURL(cwConversation: nil, openMessage: "hi")
+        XCTAssertEqual(value("hide_file_picker", url), "true")
+        XCTAssertEqual(Array(items(url).map(\.name).suffix(3)), ["cw_conversation", "hide_file_picker", "lc_open_message"])
+    }
+
+    func testHideFilePickerIsAbsentByDefault() {
+        XCTAssertNil(value("hide_file_picker", WidgetConfiguration(websiteToken: "t").widgetURL))
+    }
+
     // MARK: lc_open_message / lc_open_payload
 
     func testOpenMessageRoundTripsAndComesAfterCwConversation() {
