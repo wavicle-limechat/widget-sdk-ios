@@ -6,14 +6,22 @@ public class LimechatWidgetViewController: UIViewController {
     // MARK: - Properties
     
     private var widgetView: LimechatWidgetView!
-    private var configuration: WidgetConfiguration
+    let configuration: WidgetConfiguration
+    private var initialMessage: String?
+    private var initialMessageData: [String: Any]?
     
     public weak var widgetDelegate: LimechatWidgetDelegate?
+    /// set by the launchers. gets the attributes that were never flushed when the controller is dismissed
+    var onDismissWithHeldAttributes: (([String: Any]) -> Void)?
+    /// set by the launchers. gets every live conversation token, before the host delegate
+    var onLiveToken: ((String) -> Void)?
     
     // MARK: - Initialization
     
-    public init(configuration: WidgetConfiguration) {
+    public init(configuration: WidgetConfiguration, initialMessage: String? = nil, initialMessageData: [String: Any]? = nil) {
         self.configuration = configuration
+        self.initialMessage = initialMessage
+        self.initialMessageData = initialMessageData
         super.init(nibName: nil, bundle: nil)
         setupModalPresentation()
     }
@@ -28,6 +36,18 @@ public class LimechatWidgetViewController: UIViewController {
         super.viewDidLoad()
         setupUI()
         setupWidget()
+    }
+    
+    public override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        if isBeingDismissed { handBackHeldAttributes() }
+    }
+    
+    func handBackHeldAttributes() {
+        guard let handBack = onDismissWithHeldAttributes,
+              let held = widgetView?.pendingMessageAttributes, !held.isEmpty else { return }
+        widgetView.pendingMessageAttributes = [:]
+        handBack(held)
     }
     
     public override var prefersStatusBarHidden: Bool {
@@ -61,19 +81,46 @@ public class LimechatWidgetViewController: UIViewController {
     }
     
     private func setupWidget() {
-        widgetView.initialize(with: configuration)
+        widgetView.initialize(with: configuration, initialMessage: initialMessage, initialMessageData: initialMessageData)
     }
     
     // MARK: - Public Methods
     
     /// Send a message to the widget
     public func sendMessage(event: String, data: [String: Any] = [:]) {
+        loadViewIfNeeded()
         widgetView.sendMessage(event: event, data: data)
+    }
+    
+    /// Open the widget with a message. Sent now if the widget is ready, otherwise held until it is
+    public func open(message: String) {
+        loadViewIfNeeded()
+        widgetView.open(message: message)
+    }
+    
+    /// Open the widget with a `{content, submitted_values}` payload
+    public func open(messageData: [String: Any]) {
+        loadViewIfNeeded()
+        widgetView.open(messageData: messageData)
+    }
+    
+    /// Attach custom attributes to the customer's next message
+    @discardableResult
+    public func setMessageAttributes(_ attributes: [String: Any]) -> Bool {
+        loadViewIfNeeded()
+        return widgetView.setMessageAttributes(attributes)
     }
     
     /// Reload the widget
     public func reload() {
+        loadViewIfNeeded()
         widgetView.reload()
+    }
+    
+    /// `reset()` clears this widget's conversation, like the web SDK's `reset()`: it drops the stored or live conversation token (and a token you passed in, until you pass a new one), drops held message attributes and a held open message, and reloads the page without a conversation if it is showing. It does not close the widget. Call it on logout.
+    public func reset() {
+        loadViewIfNeeded()
+        widgetView.reset()
     }
     
     /// Present the widget modally from a view controller
@@ -81,10 +128,12 @@ public class LimechatWidgetViewController: UIViewController {
         from viewController: UIViewController,
         configuration: WidgetConfiguration,
         delegate: LimechatWidgetDelegate? = nil,
+        initialMessage: String? = nil,
+        initialMessageData: [String: Any]? = nil,
         animated: Bool = true,
         completion: (() -> Void)? = nil
     ) {
-        let widgetVC = LimechatWidgetViewController(configuration: configuration)
+        let widgetVC = LimechatWidgetViewController(configuration: configuration, initialMessage: initialMessage, initialMessageData: initialMessageData)
         widgetVC.widgetDelegate = delegate
         viewController.present(widgetVC, animated: animated, completion: completion)
     }
@@ -112,5 +161,20 @@ extension LimechatWidgetViewController: LimechatWidgetDelegate {
     
     public func widgetDidReceiveUnreadCount(_ count: Int) {
         widgetDelegate?.widgetDidReceiveUnreadCount(count)
+    }
+    
+    public func widgetDidChangeConversationToken(_ token: String) {
+        onLiveToken?(token)
+        widgetDelegate?.widgetDidChangeConversationToken(token)
+    }
+}
+
+extension LimechatWidgetViewController {
+    /// The widget presented from `host` with the same website token and instance, if any
+    static func presented(from host: UIViewController?, for configuration: WidgetConfiguration) -> LimechatWidgetViewController? {
+        guard let presented = host?.presentedViewController as? LimechatWidgetViewController,
+              presented.configuration.websiteToken == configuration.websiteToken,
+              presented.configuration.instanceId == configuration.instanceId else { return nil }
+        return presented
     }
 }

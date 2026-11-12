@@ -1,0 +1,354 @@
+import XCTest
+import WebKit
+@testable import LimechatWidget
+
+/// Pins WKNavigationDelegate / WKUIDelegate decisions of LimechatWidgetView.
+/// branches that call UIApplication.shared.open are not driven here: the spm test runner has no
+/// UIApplication (shared is nil), so calling them would crash the runner.
+final class NavigationTests: XCTestCase {
+
+    private var view: LimechatWidgetView!
+    private var spy: SpyDelegate!
+
+    override func setUp() {
+        super.setUp()
+        view = LimechatWidgetView(frame: .zero)
+        spy = SpyDelegate()
+        view.delegate = spy
+    }
+
+    func testNilURLIsAllowed() {
+        XCTAssertEqual(decide(view, url: nil), .allow)
+        XCTAssertEqual(spy.calls, [])
+    }
+
+    func testLimechatCloseUrlIsCancelledAndDoesNotRequestClose() {
+        XCTAssertEqual(decide(view, url: URL(string: "limechat://close")), .cancel)
+        XCTAssertEqual(spy.calls, [])
+    }
+
+    func testPinsCurrentBehaviour_limechatCloseMatchIsCaseSensitive() {
+        XCTAssertEqual(decide(view, url: URL(string: "LIMECHAT://CLOSE")), .cancel)
+        XCTAssertEqual(spy.calls, [])
+    }
+
+    func testOtherLimechatSchemeHostIsCancelledWithoutClose() {
+        XCTAssertEqual(decide(view, url: URL(string: "limechat://open")), .cancel)
+        XCTAssertEqual(spy.calls, [])
+    }
+
+    func testProdWidgetURLIsAllowed() {
+        let url = WidgetConfiguration(websiteToken: "t").widgetURL
+        XCTAssertEqual(decide(view, url: url), .allow)
+        XCTAssertEqual(decide(view, url: URL(string: "https://app.limechat.ai/api/v1/x"), type: .linkActivated), .allow)
+    }
+
+    func testAllowlistMatchesHostExactly_lookalikeHostsAreExternal() {
+        XCTAssertEqual(decide(view, url: URL(string: "https://app.limechat.ai.evil.com/widget")), .cancel)
+        XCTAssertEqual(decide(view, url: URL(string: "https://app.limechat.aievil.com")), .cancel)
+        XCTAssertEqual(decide(view, url: URL(string: "https://app.limechat.ai@evil.com")), .cancel)
+        XCTAssertEqual(spy.calls, [])
+    }
+
+    func testPinsCurrentBehaviour_httpAndOtherSubdomainsAreCancelled() {
+        XCTAssertEqual(decide(view, url: URL(string: "http://app.limechat.ai/widget")), .cancel)
+        XCTAssertEqual(decide(view, url: URL(string: "https://staging.limechat.ai/widget")), .cancel)
+    }
+
+    func testSubframeNavigationToAnotherOriginIsAllowed() {
+        let frame = FakeFrameInfo(isMainFrame: false)
+        XCTAssertEqual(decide(view, url: URL(string: "https://www.youtube.com/embed/x"), targetFrame: frame), .allow)
+        XCTAssertEqual(decide(view, url: URL(string: "https://evil.com/x"), targetFrame: FakeFrameInfo(isMainFrame: true)), .cancel)
+    }
+
+    func testSubframeLinkIsNotOpenedExternally() {
+        // a cancelled link would call UIApplication.shared.open and crash the runner, so allow proves it is skipped
+        let frame = FakeFrameInfo(isMainFrame: false)
+        XCTAssertEqual(decide(view, url: URL(string: "https://example.com/doc"), type: .linkActivated, targetFrame: frame), .allow)
+        XCTAssertEqual(spy.calls, [])
+    }
+
+    func testSchemeAndHostMatchIsCaseInsensitive() {
+        XCTAssertEqual(decide(view, url: URL(string: "HTTPS://APP.LIMECHAT.AI/widget")), .allow)
+        XCTAssertEqual(decide(view, url: URL(string: "https://App.LimeChat.ai:443/widget")), .allow)
+        XCTAssertEqual(spy.calls, [])
+    }
+
+    func testMixedCaseCustomBaseURLMatchesCaseInsensitively() {
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", baseURL: "HTTP://LocalHost:8787"))
+        XCTAssertEqual(decide(view, url: URL(string: "http://localhost:8787/widget")), .allow)
+        XCTAssertEqual(decide(view, url: URL(string: "HTTP://LOCALHOST:8787/widget")), .allow)
+        XCTAssertEqual(decide(view, url: URL(string: "http://localhost:8788/widget")), .cancel)
+        XCTAssertEqual(decide(view, url: URL(string: "https://localhost:8787/widget")), .cancel)
+    }
+
+    func testCustomBaseURLWidgetLoadIsAllowed() {
+        let config = WidgetConfiguration(websiteToken: "t", baseURL: "http://localhost:8787")
+        view.initialize(with: config)
+        XCTAssertEqual(decide(view, url: config.widgetURL), .allow)
+    }
+
+    func testExternalNonLinkNavigationIsCancelledSilently() {
+        for type in [WKNavigationType.other, .reload, .formSubmitted, .backForward, .formResubmitted] {
+            XCTAssertEqual(decide(view, url: URL(string: "https://example.com"), type: type), .cancel)
+        }
+        XCTAssertEqual(decide(view, url: URL(string: "about:blank")), .cancel)
+        XCTAssertEqual(decide(view, url: URL(string: "tel:123")), .cancel)
+        XCTAssertEqual(spy.calls, [])
+    }
+
+    func testCreateWebViewWithNilURLReturnsNil() {
+        let result = view.webView(view.testWebView, createWebViewWith: WKWebViewConfiguration(),
+                                  for: FakeNavigationAction(url: nil), windowFeatures: WKWindowFeatures())
+        XCTAssertNil(result)
+    }
+
+    func testLimechatWidgetViewIsTheWebViewsDelegates() {
+        XCTAssertTrue(view.testWebView.navigationDelegate === view)
+        XCTAssertTrue(view.testWebView.uiDelegate === view)
+    }
+
+    func testWebViewConfiguration() {
+        let web = view.testWebView
+        XCTAssertTrue(web.configuration.allowsInlineMediaPlayback)
+        XCTAssertEqual(web.configuration.mediaTypesRequiringUserActionForPlayback, [])
+        XCTAssertTrue(web.configuration.websiteDataStore === WKWebsiteDataStore.default())
+        XCTAssertFalse(web.scrollView.bounces)
+        XCTAssertFalse(web.isOpaque)
+        XCTAssertEqual(web.scrollView.contentInsetAdjustmentBehavior, .never)
+    }
+
+    // MARK: load / errors
+
+    func testInitializeWithEmptyTokenReportsConfigurationError() {
+        view.initialize(with: WidgetConfiguration(websiteToken: ""))
+        XCTAssertEqual(spy.calls, [.error("Configuration Error: Invalid configuration or URL")])
+    }
+
+    // MARK: ready (set-cw-conversation after the page committed)
+
+    private func ready(_ body: [String: Any] = ["event": "set-cw-conversation"]) {
+        view.userContentController(view.testWebView.configuration.userContentController,
+                                   didReceive: FakeScriptMessage(name: "limechat", body: body))
+    }
+
+    func testCommitAloneDoesNotFireWidgetDidLoad() {
+        view.webView(view.testWebView, didCommit: nil)
+        XCTAssertEqual(spy.calls, [])
+    }
+
+    func testReadyFiresWidgetDidLoadOnce() {
+        view.webView(view.testWebView, didCommit: nil)
+        ready()
+        ready()
+        XCTAssertEqual(spy.calls, [.didLoad])
+    }
+
+    func testWidgetDidLoadFiresAfterTokenCallback() {
+        let sandbox = TokenStoreSandbox()
+        defer { sandbox.tearDown() }
+        view.webView(view.testWebView, didCommit: nil)
+        ready(["event": "set-cw-conversation", "cw_conversation": "tok"])
+        XCTAssertEqual(spy.calls, [.token("tok"), .didLoad])
+    }
+
+    func testReadyBeforeCommitIsIgnored() {
+        ready()
+        XCTAssertEqual(spy.calls, [])
+        view.webView(view.testWebView, didCommit: nil)
+        ready()
+        XCTAssertEqual(spy.calls, [.didLoad])
+    }
+
+    func testNewCommitFiresWidgetDidLoadAgain() {
+        view.webView(view.testWebView, didCommit: nil)
+        ready()
+        view.webView(view.testWebView, didCommit: nil)
+        ready()
+        XCTAssertEqual(spy.calls, [.didLoad, .didLoad])
+    }
+
+    func testStartingALoadResetsReadyState() {
+        view.initialize(with: WidgetConfiguration(websiteToken: "t"))
+        view.webView(view.testWebView, didCommit: nil)
+        ready()
+        XCTAssertTrue(view.widgetReady)
+        view.reload()
+        XCTAssertFalse(view.pageStarted)
+        XCTAssertFalse(view.widgetReady)
+    }
+
+    func testOpenAfterWebProcessTerminationHoldsAndReloads() {
+        view.initialize(with: WidgetConfiguration(websiteToken: "t"))
+        view.webView(view.testWebView, didCommit: nil)
+        ready()
+        XCTAssertTrue(view.widgetReady)
+        view.webViewWebContentProcessDidTerminate(view.testWebView)
+        XCTAssertFalse(view.widgetReady)
+        XCTAssertFalse(view.pageStarted)
+        XCTAssertTrue(view.processRecoveryUsed)
+        view.open(message: "hi")
+        XCTAssertEqual(view.pendingOpen as? String, "hi")
+        XCTAssertTrue(view.testWebView.isLoading)
+        view.testWebView.stopLoading()
+    }
+
+    func testReloadBeforeInitializeDoesNothing() {
+        view.reload()
+        XCTAssertEqual(spy.calls, [])
+        XCTAssertFalse(view.testWebView.isLoading)
+    }
+
+    func testProcessDeathReloadsOnceThenReportsUntilReady() throws {
+        let server = try LocalHTTPServer()
+        defer { server.stop() }
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", baseURL: "http://localhost:\(server.port)"))
+        waitForRequests(server, 1)
+
+        // first death: one reload, no error
+        view.webViewWebContentProcessDidTerminate(view.testWebView)
+        waitForRequests(server, 2)
+        XCTAssertEqual(spy.calls, [])
+
+        // second death before ready: no reload, one error
+        view.webViewWebContentProcessDidTerminate(view.testWebView)
+        waitForRequests(server, 3, expectLoad: false)
+        XCTAssertEqual(spy.calls, [.error("WebView Error: Widget web process died again before ready")])
+
+        // a manual reload does not reset the flag
+        view.reload()
+        waitForRequests(server, 3)
+        view.webViewWebContentProcessDidTerminate(view.testWebView)
+        waitForRequests(server, 4, expectLoad: false)
+        XCTAssertEqual(spy.calls.count, 2)
+
+        // the first ready resets it
+        view.webView(view.testWebView, didCommit: nil)
+        ready()
+        view.webViewWebContentProcessDidTerminate(view.testWebView)
+        waitForRequests(server, 4)
+        let died = SpyDelegate.Call.error("WebView Error: Widget web process died again before ready")
+        XCTAssertEqual(spy.calls, [died, died, .didLoad])
+    }
+
+    /// waits until the server saw `count` requests, or checks that it did not see them
+    private func waitForRequests(_ server: LocalHTTPServer, _ count: Int, expectLoad: Bool = true) {
+        let deadline = Date().addingTimeInterval(expectLoad ? 10 : 0.8)
+        while server.requests < count && Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.02))
+        }
+        if expectLoad {
+            XCTAssertGreaterThanOrEqual(server.requests, count)
+        } else {
+            XCTAssertLessThan(server.requests, count)
+        }
+    }
+
+    /// kills the real web content process with the private `_killWebContentProcess` and waits for
+    /// webkit to commit the reloaded page. needs a local server and a window.
+    func testAReloadDuringALoadReportsNoError() throws {
+        let server = try LocalHTTPServer(holdFirstResponse: true)
+        defer { server.stop() }
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", baseURL: "http://localhost:\(server.port)"))
+        waitForRequests(server, 1)
+        view.reload()
+        waitForRequests(server, 2)
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        XCTAssertEqual(spy.calls, [])
+    }
+
+    func testProcessDeathWithARealKillRecovers() throws {
+        let server = try LocalHTTPServer()
+        defer { server.stop() }
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        view.frame = window.bounds
+        window.addSubview(view)
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", baseURL: "http://localhost:\(server.port)"))
+        wait(for: [pageCommitted(server, requests: 1)], timeout: 20)
+        XCTAssertEqual(server.requests, 1)
+
+        // SIGKILL on the real pid is a crash webkit always reports. `_killWebContentProcess` is a
+        // requested exit, and in a full run webkit sometimes never calls didTerminate for it
+        let pid = (view.testWebView.value(forKey: "_webProcessIdentifier") as? Int32) ?? 0
+        try XCTSkipUnless(pid > 0, "private pid api missing")
+        Darwin.kill(pid, SIGKILL)
+        wait(for: [pageCommitted(server, requests: 2)], timeout: 20)
+        XCTAssertEqual(spy.calls, [])
+        XCTAssertTrue(view.processRecoveryUsed)
+    }
+
+    private func pageCommitted(_ server: LocalHTTPServer, requests: Int) -> XCTestExpectation {
+        let exp = expectation(description: "page committed")
+        let timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
+            guard let self = self, self.view.pageStarted, server.requests >= requests else { return }
+            timer.invalidate()
+            exp.fulfill()
+        }
+        addTeardownBlock { timer.invalidate() }
+        return exp
+    }
+
+    func testMainFrameHTTPErrorIsReported() {
+        XCTAssertEqual(decide(view, statusCode: 404), .allow)
+        XCTAssertEqual(decide(view, statusCode: 500), .allow)
+        XCTAssertEqual(spy.calls, [.error("WebView Error: HTTP error: 404"), .error("WebView Error: HTTP error: 500")])
+    }
+
+    func testSubframeHTTPErrorIsNotReported() {
+        XCTAssertEqual(decide(view, statusCode: 500, isMainFrame: false), .allow)
+        XCTAssertEqual(spy.calls, [])
+    }
+
+    func testHTTPSuccessIsNotReported() {
+        XCTAssertEqual(decide(view, statusCode: 200), .allow)
+        XCTAssertEqual(decide(view, statusCode: 399), .allow)
+        XCTAssertEqual(spy.calls, [])
+    }
+
+    func testDidFailAndProvisionalFailReportWebViewError() {
+        let err = NSError(domain: "x", code: 1, userInfo: [NSLocalizedDescriptionKey: "boom"])
+        view.webView(view.testWebView, didFail: nil, withError: err)
+        view.webView(view.testWebView, didFailProvisionalNavigation: nil, withError: err)
+        XCTAssertEqual(spy.calls, [.error("WebView Error: Failed to load widget: boom"),
+                                   .error("WebView Error: Failed to load widget: boom")])
+    }
+
+    // MARK: allowlist = scheme + host + port of baseURL
+
+    func testCustomBaseURLAllowsSameOriginAnyPath() {
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", baseURL: "http://localhost:8787"))
+        XCTAssertEqual(decide(view, url: URL(string: "http://localhost:8787/widget_config?website_token=t")), .allow)
+        XCTAssertEqual(decide(view, url: URL(string: "http://localhost:8787")), .allow)
+    }
+
+    func testCustomBaseURLRejectsOtherPortSchemeOrHost() {
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", baseURL: "http://localhost:8787"))
+        XCTAssertEqual(decide(view, url: URL(string: "http://localhost:8788/widget")), .cancel)
+        XCTAssertEqual(decide(view, url: URL(string: "http://localhost/widget")), .cancel)
+        XCTAssertEqual(decide(view, url: URL(string: "https://localhost:8787/widget")), .cancel)
+        XCTAssertEqual(decide(view, url: URL(string: "http://localhost.evil.com:8787/widget")), .cancel)
+        XCTAssertEqual(decide(view, url: URL(string: "http://localhost:8787@evil.com/widget")), .cancel)
+    }
+
+    func testCustomBaseURLNoLongerAllowsProdHost() {
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", baseURL: "http://localhost:8787"))
+        XCTAssertEqual(decide(view, url: URL(string: "https://app.limechat.ai/widget")), .cancel)
+    }
+
+    func testDefaultPortIsTreatedAsSameOrigin() {
+        XCTAssertEqual(decide(view, url: URL(string: "https://app.limechat.ai:443/widget")), .allow)
+        XCTAssertEqual(decide(view, url: URL(string: "https://app.limechat.ai:8443/widget")), .cancel)
+    }
+
+    func testUserInfoOnTheRealHostIsStillTheRealHost() {
+        XCTAssertEqual(decide(view, url: URL(string: "https://evil.com@app.limechat.ai/widget")), .allow)
+    }
+
+    func testUninitializedViewFallsBackToProdBaseURL() {
+        XCTAssertEqual(decide(view, url: URL(string: "https://app.limechat.ai")), .allow)
+        XCTAssertEqual(decide(view, url: URL(string: "http://localhost:8787/widget")), .cancel)
+    }
+}

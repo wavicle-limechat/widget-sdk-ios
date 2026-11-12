@@ -1,16 +1,15 @@
 import UIKit
-import SwiftUI
 
-/// Main Limechat Widget component - iOS equivalent of React Native's LimeChatWidget
+/// Main Limechat Widget component
 /// Handles both custom button and default icon rendering patterns
 public class LimechatWidget: UIView {
     
     // MARK: - Properties
     
     /// Widget configuration
-    public let configuration: WidgetConfiguration
+    public private(set) var configuration: WidgetConfiguration
     
-    /// Optional custom button view (like React Native's customButton prop)
+    /// Optional custom button view
     public var customButton: UIView? {
         didSet {
             setupWidget()
@@ -18,23 +17,25 @@ public class LimechatWidget: UIView {
     }
     
     /// Widget delegate for callbacks
-    public weak var delegate: LimechatWidgetDelegate?
-    
-    /// Style for the container (like React Native's style prop)
-    public var containerStyle: [String: Any] = [:] {
+    public weak var delegate: LimechatWidgetDelegate? {
         didSet {
-            applyContainerStyle()
+            widgetIcon?.delegate = delegate
+            LimechatWidgetViewController.presented(from: findViewController(), for: configuration)?.widgetDelegate = delegate
         }
     }
     
-    /// Style for the default icon (like React Native's iconStyle prop)
+    /// Style for the container
+    @available(*, deprecated, message: "Unused. Will be removed in the next major release.")
+    public var containerStyle: [String: Any] = [:]
+    
+    /// Style for the default icon
     public var iconStyle: [String: Any] = [:] {
         didSet {
             applyIconStyle()
         }
     }
     
-    /// Style for unread count badge (like React Native's unreadCountStyle prop)
+    /// Style for unread count badge
     public var unreadCountStyle: [String: Any] = [:] {
         didSet {
             applyUnreadCountStyle()
@@ -46,6 +47,32 @@ public class LimechatWidget: UIView {
     private var widgetIcon: LimechatWidgetIcon?
     private var customButtonContainer: UIView?
     private var unreadCountBadge: UIView?
+    private var ownPendingMessageAttributes: [String: Any] = [:]
+    /// One buffer: the default icon holds it when there is one, so a tap on the icon sees it
+    var pendingMessageAttributes: [String: Any] {
+        get { widgetIcon?.pendingMessageAttributes ?? ownPendingMessageAttributes }
+        set {
+            if let icon = widgetIcon {
+                icon.pendingMessageAttributes = newValue
+                ownPendingMessageAttributes = [:]
+            } else {
+                ownPendingMessageAttributes = newValue
+            }
+        }
+    }
+    private var ownLiveConversationToken: String?
+    /// One carrier, same as the attributes: the default icon holds it when there is one
+    var liveConversationToken: String? {
+        get { widgetIcon != nil ? widgetIcon?.liveConversationToken : ownLiveConversationToken }
+        set {
+            if let icon = widgetIcon {
+                icon.liveConversationToken = newValue
+                ownLiveConversationToken = nil
+            } else {
+                ownLiveConversationToken = newValue
+            }
+        }
+    }
     private var unreadCount: Int = 0 {
         didSet {
             updateUnreadCount()
@@ -57,7 +84,7 @@ public class LimechatWidget: UIView {
     /// Initialize with configuration (required)
     /// - Parameters:
     ///   - configuration: Widget configuration with website token
-    ///   - customButton: Optional custom button (like React Native's customButton prop)
+    ///   - customButton: Optional custom button
     ///   - delegate: Widget delegate for callbacks
     public init(
         configuration: WidgetConfiguration,
@@ -79,7 +106,8 @@ public class LimechatWidget: UIView {
     // MARK: - Setup
     
     private func setupWidget() {
-        // Clear existing views
+        let held = pendingMessageAttributes
+        let heldToken = liveConversationToken
         subviews.forEach { $0.removeFromSuperview() }
         widgetIcon = nil
         customButtonContainer = nil
@@ -93,32 +121,29 @@ public class LimechatWidget: UIView {
         
         setupUnreadCountBadge()
         applyStyles()
+        pendingMessageAttributes = held
+        liveConversationToken = heldToken
     }
     
     private func setupCustomButton(_ button: UIView) {
-        // Like React Native: if customButton is provided, render it with onPress handling
         customButtonContainer = UIView()
         guard let container = customButtonContainer else { return }
         
         addSubview(container)
         container.addSubview(button)
         
-        // Add tap gesture to custom button container
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleButtonPress))
         container.addGestureRecognizer(tapGesture)
         
-        // Setup constraints
         container.translatesAutoresizingMaskIntoConstraints = false
         button.translatesAutoresizingMaskIntoConstraints = false
         
         NSLayoutConstraint.activate([
-            // Container fills this view
             container.topAnchor.constraint(equalTo: topAnchor),
             container.leadingAnchor.constraint(equalTo: leadingAnchor),
             container.trailingAnchor.constraint(equalTo: trailingAnchor),
             container.bottomAnchor.constraint(equalTo: bottomAnchor),
             
-            // Button fills container
             button.topAnchor.constraint(equalTo: container.topAnchor),
             button.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             button.trailingAnchor.constraint(equalTo: container.trailingAnchor),
@@ -127,7 +152,6 @@ public class LimechatWidget: UIView {
     }
     
     private func setupDefaultIcon() {
-        // Like React Native: if no customButton, render default WidgetIcon from config
         widgetIcon = LimechatWidgetIcon()
         guard let icon = widgetIcon else { return }
         
@@ -146,7 +170,6 @@ public class LimechatWidget: UIView {
     }
     
     private func setupUnreadCountBadge() {
-        // Create unread count badge (like React Native's unread count display)
         unreadCountBadge = UIView()
         guard let badge = unreadCountBadge else { return }
         
@@ -167,13 +190,11 @@ public class LimechatWidget: UIView {
         countLabel.translatesAutoresizingMaskIntoConstraints = false
         
         NSLayoutConstraint.activate([
-            // Badge in top-right corner
             badge.topAnchor.constraint(equalTo: topAnchor, constant: -5),
             badge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: 5),
             badge.widthAnchor.constraint(greaterThanOrEqualToConstant: 20),
             badge.heightAnchor.constraint(equalToConstant: 20),
             
-            // Label fills badge
             countLabel.centerXAnchor.constraint(equalTo: badge.centerXAnchor),
             countLabel.centerYAnchor.constraint(equalTo: badge.centerYAnchor),
             countLabel.leadingAnchor.constraint(greaterThanOrEqualTo: badge.leadingAnchor, constant: 4),
@@ -184,23 +205,78 @@ public class LimechatWidget: UIView {
     // MARK: - Actions
     
     @objc private func handleButtonPress() {
-        // Like React Native: handle both custom button onPress and widget toggle
-        openWidget()
-    }
-    
-    private func openWidget() {
-        // Find the view controller and present widget
-        guard let viewController = findViewController() else { return }
-        
-        let widgetVC = LimechatWidgetViewController(configuration: configuration)
-        widgetVC.widgetDelegate = delegate
-        
-        viewController.present(widgetVC, animated: true)
+        open()
     }
     
     // MARK: - Public Methods
     
-    /// Update unread count (like React Native's automatic unread count update)
+    /// Present the widget, optionally with a message or a `{content, submitted_values}` payload
+    public func open(message: String? = nil, messageData: [String: Any]? = nil) {
+        guard let viewController = findViewController() else { return }
+        if let presented = LimechatWidgetViewController.presented(from: viewController, for: configuration) {
+            if let messageData = messageData {
+                presented.open(messageData: messageData)
+            } else if let message = message {
+                presented.open(message: message)
+            }
+            return
+        }
+        if viewController.presentedViewController != nil {
+            if message != nil || messageData != nil {
+                delegate?.widgetDidReceiveError(.webViewError("Another view controller is presented, message not delivered"))
+            }
+            return
+        }
+        let widget = LimechatWidgetViewController(configuration: configuration.withLiveToken(liveConversationToken), initialMessage: message, initialMessageData: messageData)
+        widget.widgetDelegate = delegate
+        widget.onLiveToken = { [weak self] in self?.liveConversationToken = $0 }
+        widget.onDismissWithHeldAttributes = { [weak self] held in
+            guard let self = self else { return }
+            self.pendingMessageAttributes.merge(held) { current, _ in current }
+        }
+        if !pendingMessageAttributes.isEmpty {
+            widget.setMessageAttributes(pendingMessageAttributes)
+            pendingMessageAttributes = [:]
+        }
+        viewController.present(widget, animated: true)
+    }
+    
+    /// Attach custom attributes to the customer's next message. Held until the widget is presented
+    @discardableResult
+    public func setMessageAttributes(_ attributes: [String: Any]) -> Bool {
+        guard !attributes.isEmpty, JSONSerialization.isValidJSONObject(attributes) else { return false }
+        if let presented = LimechatWidgetViewController.presented(from: findViewController(), for: configuration) {
+            return presented.setMessageAttributes(attributes)
+        }
+        pendingMessageAttributes.merge(attributes) { _, new in new }
+        return true
+    }
+    
+    /// Clears this launcher's conversation: the live token, held message attributes, and the user and token from its configuration
+    /// (until `apply(_:)` gets new ones). Also resets the stored token and a widget presented from here. Call it on logout.
+    public func reset() {
+        if let icon = widgetIcon {
+            icon.reset()
+        } else {
+            ownPendingMessageAttributes = [:]
+            ownLiveConversationToken = nil
+            LimechatWidgetView.reset(instanceId: configuration.instanceId)
+            LimechatWidgetViewController.presented(from: findViewController(), for: configuration)?.reset()
+        }
+        configuration = configuration.replacingConversationToken(nil).replacingUser(nil)
+    }
+    
+    /// Take a new configuration from the swiftui wrapper. A new user drops held attributes and the live token
+    func apply(_ new: WidgetConfiguration) {
+        if !configuration.isSameIdentity(as: new) {
+            pendingMessageAttributes = [:]
+            liveConversationToken = nil
+        }
+        configuration = new
+        widgetIcon?.initialize(with: new)
+    }
+    
+    /// Update unread count
     public func setUnreadCount(_ count: Int) {
         unreadCount = count
     }
@@ -213,28 +289,18 @@ public class LimechatWidget: UIView {
         
         if unreadCount > 0 {
             badge.isHidden = false
-            countLabel.text = unreadCount > 99 ? "99+" : "\(unreadCount)"
+            countLabel.text = unreadBadgeText(unreadCount)
         } else {
             badge.isHidden = true
         }
-        
-        // Also update widget icon if using default icon
-        widgetIcon?.setUnreadCount(unreadCount)
     }
     
     private func applyStyles() {
-        applyContainerStyle()
         applyIconStyle()
         applyUnreadCountStyle()
     }
     
-    private func applyContainerStyle() {
-        // Apply container styles (like React Native's style prop)
-        // This can be extended to support more style properties
-    }
-    
     private func applyIconStyle() {
-        // Apply icon styles (like React Native's iconStyle prop)
         guard let icon = widgetIcon else { return }
         
         if let size = iconStyle["size"] as? CGFloat {
@@ -252,7 +318,6 @@ public class LimechatWidget: UIView {
     }
     
     private func applyUnreadCountStyle() {
-        // Apply unread count styles (like React Native's unreadCountStyle prop)
         guard let badge = unreadCountBadge else { return }
         
         if let backgroundColor = unreadCountStyle["backgroundColor"] as? UIColor {
@@ -261,51 +326,5 @@ public class LimechatWidget: UIView {
         if let cornerRadius = unreadCountStyle["cornerRadius"] as? CGFloat {
             badge.layer.cornerRadius = cornerRadius
         }
-    }
-}
-
-// MARK: - Helper Extension
-
-private extension UIView {
-    func findViewController() -> UIViewController? {
-        if let nextResponder = self.next as? UIViewController {
-            return nextResponder
-        } else if let nextResponder = self.next as? UIView {
-            return nextResponder.findViewController()
-        } else {
-            return nil
-        }
-    }
-}
-
-// MARK: - SwiftUI Wrapper
-
-/// SwiftUI wrapper for LimechatWidget (like React Native component usage)
-public struct LimechatWidgetView: UIViewRepresentable {
-    
-    public let configuration: WidgetConfiguration
-    public let customButton: UIView?
-    public let delegate: LimechatWidgetDelegate?
-    
-    public init(
-        configuration: WidgetConfiguration,
-        customButton: UIView? = nil,
-        delegate: LimechatWidgetDelegate? = nil
-    ) {
-        self.configuration = configuration
-        self.customButton = customButton
-        self.delegate = delegate
-    }
-    
-    public func makeUIView(context: Context) -> LimechatWidget {
-        return LimechatWidget(
-            configuration: configuration,
-            customButton: customButton,
-            delegate: delegate
-        )
-    }
-    
-    public func updateUIView(_ uiView: LimechatWidget, context: Context) {
-        // Update if needed
     }
 }

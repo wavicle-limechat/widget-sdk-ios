@@ -1,22 +1,30 @@
 import UIKit
 import WebKit
 
-/// Delegate protocol for widget events
-public protocol LimechatWidgetDelegate: AnyObject {
-    func widgetDidLoad()
-    func widgetDidRequestClose()
-    func widgetDidReceiveError(_ error: WidgetError)
-    func widgetDidReceiveMessage(_ message: [String: Any])
-    func widgetDidReceiveUnreadCount(_ count: Int)
-}
-
 /// Main widget view that renders the Limechat widget in a WebView
 public class LimechatWidgetView: UIView {
     
     // MARK: - Properties
     
     private var webView: WKWebView!
-    private var configuration: WidgetConfiguration?
+    var configuration: WidgetConfiguration?
+    var instanceId = ConversationTokenStore.defaultInstanceId
+    var cwConversation: String?
+    /// true once the current document committed
+    var pageStarted = false
+    /// true once the widget posted set-cw-conversation on the current document
+    var widgetReady = false
+    /// true from a load start until ready or a main-frame failure. an open message is held while this is set, not reloaded
+    var loadPending = false
+    /// one reload is allowed after the web process dies. a ready page resets it
+    var processRecoveryUsed = false
+    /// when the main frame of the current load finished, on `now`. a pending load that finished this long ago without ready is stuck
+    var pageFinishedAt: TimeInterval?
+    /// monotonic seconds, replaced in tests
+    var now: () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
+    static let stuckLoadTimeout: TimeInterval = 10
+    var pendingOpen: Any?
+    var pendingMessageAttributes: [String: Any] = [:]
     
     public weak var delegate: LimechatWidgetDelegate?
     
@@ -32,6 +40,13 @@ public class LimechatWidgetView: UIView {
         setupViews()
     }
     
+    deinit {
+        let contentController = webView?.configuration.userContentController
+        for name in LimechatWidgetView.messageHandlerNames {
+            contentController?.removeScriptMessageHandler(forName: name)
+        }
+    }
+    
     // MARK: - Setup
     
     private func setupViews() {
@@ -42,34 +57,27 @@ public class LimechatWidgetView: UIView {
     private func setupWebView() {
         let webConfiguration = WKWebViewConfiguration()
         
-        // Enable JavaScript
-        webConfiguration.preferences.javaScriptEnabled = true
-        
-        // Add message handler for communication
         let contentController = WKUserContentController()
-        contentController.add(self, name: "limechatNative")
+        let handler = WeakScriptMessageHandler(target: self)
+        for name in LimechatWidgetView.messageHandlerNames {
+            contentController.add(handler, name: name)
+        }
         webConfiguration.userContentController = contentController
         
-        // Configure for inline media playback
         webConfiguration.allowsInlineMediaPlayback = true
         webConfiguration.mediaTypesRequiringUserActionForPlayback = []
         
-        // Create WebView
         webView = WKWebView(frame: bounds, configuration: webConfiguration)
         webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         webView.navigationDelegate = self
         webView.uiDelegate = self
         
-        // Configure WebView settings
         webView.scrollView.isScrollEnabled = true
         webView.scrollView.bounces = false
         webView.isOpaque = false
         webView.backgroundColor = .clear
         
-        // Handle safe area for modern devices
-        if #available(iOS 11.0, *) {
-            webView.scrollView.contentInsetAdjustmentBehavior = .never
-        }
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
         
         addSubview(webView)
         webView.translatesAutoresizingMaskIntoConstraints = false
@@ -84,130 +92,182 @@ public class LimechatWidgetView: UIView {
     // MARK: - Public Methods
     
     /// Initialize the widget with configuration
-    public func initialize(with configuration: WidgetConfiguration) {
+    public func initialize(with configuration: WidgetConfiguration, initialMessage: String? = nil, initialMessageData: [String: Any]? = nil) {
+        if self.configuration != nil { pendingMessageAttributes = [:] }
         self.configuration = configuration
+        pendingOpen = nil
+        
+        // same as android: instanceId or "default"; external token wins over the stored one
+        if let id = configuration.instanceId, !id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            instanceId = id
+        } else {
+            instanceId = ConversationTokenStore.defaultInstanceId
+        }
+        // another user (or none) on this instance: the stored token is not theirs. anonymous to a user is not a switch
+        let identity = ConversationTokenStore.identity(of: configuration)
+        if let previous = ConversationTokenStore.identities[instanceId], previous != identity {
+            ConversationTokenStore.clear(instanceId: instanceId)
+        }
+        ConversationTokenStore.identities[instanceId] = identity
+        if let token = configuration.conversationToken {
+            cwConversation = token
+        } else {
+            cwConversation = ConversationTokenStore.load(instanceId: instanceId)
+        }
+        
+        installUserScript()
+        if let raw = initialMessageData, !raw.isEmpty {
+            let data = LimechatWidgetView.withDefaultContent(raw)
+            if JSONSerialization.isValidJSONObject(data) {
+                pendingOpen = data
+            } else {
+                delegate?.widgetDidReceiveError(.webViewError("Failed to serialize message"))
+            }
+        }
+        if pendingOpen == nil, let message = initialMessage, !message.isEmpty {
+            pendingOpen = message
+        }
         loadWidget()
     }
     
     /// Send a message to the widget
     public func sendMessage(event: String, data: [String: Any] = [:]) {
+        deliver(event: event, data: data)
+    }
+    
+    /// - Returns: false when the message could not be serialised, nothing was sent
+    @discardableResult
+    func deliver(event: String, data: [String: Any]) -> Bool {
         var message = data
         message["event"] = event
         
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: message),
+        guard JSONSerialization.isValidJSONObject(message),
+              let jsonData = try? JSONSerialization.data(withJSONObject: message),
               let jsonString = String(data: jsonData, encoding: .utf8) else {
             let error = WidgetError.webViewError("Failed to serialize message")
             delegate?.widgetDidReceiveError(error)
-            return
+            return false
         }
         
-        let script = "window.postMessage(\(jsonString), '*');"
+        let script = "window.postMessage('chatwoot-widget:' + JSON.stringify(\(jsonString)), '*');"
         webView.evaluateJavaScript(script) { _, error in
             if let error = error {
                 let widgetError = WidgetError.webViewError("Failed to send message: \(error.localizedDescription)")
                 self.delegate?.widgetDidReceiveError(widgetError)
             }
         }
+        return true
+    }
+    
+    /// Open the widget with a message. Sent now if the widget is ready, otherwise held until it is
+    public func open(message: String) {
+        guard configuration != nil, !message.isEmpty else { return }
+        deliverOpen(message)
+    }
+    
+    /// Open the widget with a `{content, submitted_values}` payload
+    public func open(messageData: [String: Any]) {
+        guard configuration != nil, !messageData.isEmpty else { return }
+        let data = LimechatWidgetView.withDefaultContent(messageData)
+        guard JSONSerialization.isValidJSONObject(data) else {
+            delegate?.widgetDidReceiveError(.webViewError("Failed to serialize message"))
+            return
+        }
+        deliverOpen(data)
+    }
+    
+    /// Attach custom attributes to the customer's next message. Repeat calls merge, later keys win.
+    /// Held until the widget is ready, and sent before a held open message.
+    /// - Returns: false for an empty or non-json value
+    @discardableResult
+    public func setMessageAttributes(_ attributes: [String: Any]) -> Bool {
+        guard !attributes.isEmpty, JSONSerialization.isValidJSONObject(attributes) else { return false }
+        pendingMessageAttributes.merge(attributes) { _, new in new }
+        flushMessageAttributes()
+        return true
+    }
+    
+    func flushMessageAttributes() {
+        guard widgetReady, !pendingMessageAttributes.isEmpty else { return }
+        if deliver(event: "set-message-attributes", data: ["attributes": pendingMessageAttributes]) {
+            pendingMessageAttributes = [:]
+        }
     }
     
     /// Reload the widget
     public func reload() {
+        guard configuration != nil else { return }
         loadWidget()
+    }
+    
+    /// `reset()` clears this widget's conversation, like the web SDK's `reset()`: it drops the stored or live conversation token and the user (and a token or user you passed in, until you pass new ones), drops held message attributes and a held open message, and reloads the page without a conversation if it is showing. It does not close the widget. Call it on logout.
+    /// Before `initialize` the call does nothing.
+    public func reset() {
+        guard let configuration = configuration else { return }
+        ConversationTokenStore.clear(instanceId: instanceId)
+        cwConversation = nil
+        self.configuration = configuration.replacingConversationToken(nil).replacingUser(nil)
+        installUserScript() // removes the old rnUser script, the user is gone so nothing is added back
+        pendingMessageAttributes = [:]
+        pendingOpen = nil
+        loadWidget()
+    }
+    
+    /// Clears the stored conversation token for `instanceId` (nil or blank means `"default"`).
+    /// Does not reload a view that is showing, use the instance `reset()` for that.
+    public static func reset(instanceId: String?) {
+        let id = instanceId?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            ? instanceId! : ConversationTokenStore.defaultInstanceId
+        ConversationTokenStore.clear(instanceId: id)
     }
     
     // MARK: - Private Methods
     
-    private func loadWidget() {
+    private func installUserScript() {
+        let controller = webView.configuration.userContentController
+        controller.removeAllUserScripts()
+        guard let user = configuration?.user, !user.dictionary.isEmpty,
+              let data = try? JSONSerialization.data(withJSONObject: user.dictionary),
+              let json = String(data: data, encoding: .utf8) else { return }
+        let source = "window.chatwootWebChannel = window.chatwootWebChannel || {}; window.chatwootWebChannel.rnUser = \(json);"
+        controller.addUserScript(WKUserScript(source: source, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+    }
+    
+    /// Like the web sdk: no `content` (missing, null or empty) with other keys gets `content: "Hi"`
+    static func withDefaultContent(_ data: [String: Any]) -> [String: Any] {
+        let content = data["content"]
+        let missing = content == nil || content is NSNull || (content as? String)?.isEmpty == true
+        guard missing, data.keys.contains(where: { $0 != "content" }) else { return data }
+        var copy = data
+        copy["content"] = "Hi"
+        return copy
+    }
+    
+    private func deliverOpen(_ message: Any) {
+        if widgetReady {
+            sendMessage(event: "open-with-message", data: ["openMessage": message])
+            return
+        }
+        pendingOpen = message
+        // the page finished but the widget never became ready: stop holding and reload
+        if loadPending, let finished = pageFinishedAt, now() - finished >= LimechatWidgetView.stuckLoadTimeout {
+            loadPending = false
+        }
+        if !loadPending { loadWidget() }
+    }
+    
+    func loadWidget() {
         guard let configuration = configuration,
-              let url = configuration.widgetURL else {
+              let url = configuration.widgetURL(cwConversation: cwConversation) else {
             let error = WidgetError.configurationError("Invalid configuration or URL")
             delegate?.widgetDidReceiveError(error)
             return
         }
         
-        let request = URLRequest(url: url)
-        webView.load(request)
-    }
-}
-
-// MARK: - WKNavigationDelegate
-
-extension LimechatWidgetView: WKNavigationDelegate {
-    public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        delegate?.widgetDidLoad()
-    }
-    
-    public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        let widgetError = WidgetError.webViewError("Failed to load widget: \(error.localizedDescription)")
-        delegate?.widgetDidReceiveError(widgetError)
-    }
-    
-    public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        let widgetError = WidgetError.webViewError("Failed to load widget: \(error.localizedDescription)")
-        delegate?.widgetDidReceiveError(widgetError)
-    }
-    
-    public func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        guard let url = navigationAction.request.url else {
-            decisionHandler(.allow)
-            return
-        }
-        
-        // Handle special URLs
-        if url.scheme == "limechat" && url.host == "close" {
-            delegate?.widgetDidRequestClose()
-            decisionHandler(.cancel)
-            return
-        }
-        
-        // Only allow loading widget URLs
-        if url.absoluteString.hasPrefix("https://app.limechat.ai") {
-            decisionHandler(.allow)
-        } else {
-            // Allow external links to open in Safari
-            if navigationAction.navigationType == .linkActivated {
-                UIApplication.shared.open(url)
-            }
-            decisionHandler(.cancel)
-        }
-    }
-}
-
-// MARK: - WKUIDelegate
-
-extension LimechatWidgetView: WKUIDelegate {
-    public func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-        // Handle new window requests by opening in Safari
-        if let url = navigationAction.request.url {
-            UIApplication.shared.open(url)
-        }
-        return nil
-    }
-}
-
-// MARK: - WKScriptMessageHandler
-
-extension LimechatWidgetView: WKScriptMessageHandler {
-    public func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard message.name == "limechatNative",
-              let body = message.body as? [String: Any] else {
-            return
-        }
-        
-        // Handle different message types
-        if let event = body["event"] as? String {
-            switch event {
-            case "close":
-                delegate?.widgetDidRequestClose()
-            case "unread_count":
-                if let count = body["count"] as? Int {
-                    delegate?.widgetDidReceiveUnreadCount(count)
-                }
-            default:
-                delegate?.widgetDidReceiveMessage(body)
-            }
-        } else {
-            delegate?.widgetDidReceiveMessage(body)
-        }
+        pageStarted = false
+        widgetReady = false
+        pageFinishedAt = nil
+        loadPending = true
+        webView.load(URLRequest(url: url))
     }
 }
