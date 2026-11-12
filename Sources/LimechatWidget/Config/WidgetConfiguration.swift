@@ -133,6 +133,15 @@ public struct WidgetConfiguration {
 extension WidgetConfiguration {
     /// Same configuration with another `conversationToken`
     func replacingConversationToken(_ token: String?) -> WidgetConfiguration {
+        replacing(user: user, conversationToken: token)
+    }
+    
+    /// Same configuration with another `user`
+    func replacingUser(_ user: User?) -> WidgetConfiguration {
+        replacing(user: user, conversationToken: conversationToken)
+    }
+    
+    private func replacing(user: User?, conversationToken token: String?) -> WidgetConfiguration {
         WidgetConfiguration(
             websiteToken: websiteToken,
             locale: locale,

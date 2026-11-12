@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - a delegate set on `LimechatWidget` after init is passed to the default icon.
 
 ### Added
-- `reset()` on `LimechatWidgetView` and `LimechatWidgetViewController`, and static `LimechatWidgetView.reset(instanceId:)`. Clears the stored or live conversation token, a token passed in the configuration (until the next `initialize`), held attributes and a held open message, then reloads without a conversation. Does not close the widget. Call it on logout.
+- `reset()` on `LimechatWidgetView` and `LimechatWidgetViewController`, and static `LimechatWidgetView.reset(instanceId:)`. Clears the stored or live conversation token and the user, a token or user passed in the configuration (until the next `initialize`), held attributes and a held open message, then reloads without a conversation. Does not close the widget. Call it on logout.
 - `setMessageAttributes(_:)` on `LimechatWidgetView`, `LimechatWidgetViewController`, `LimechatWidget` and `LimechatWidgetIcon`. Attaches custom attributes to the customer's next message. Needs a widget build containing `c8126fb7cd`, older builds ignore it. A tap on the default launcher icon delivers attributes set on `LimechatWidget`.
 - `reload()` on `LimechatWidgetView` and `LimechatWidgetViewController`. Before `initialize` the call does nothing.
 - `WidgetConfiguration.User.customAttributes`, sent through `rnUser` and attached to the next message.

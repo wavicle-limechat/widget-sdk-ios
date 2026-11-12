@@ -128,4 +128,39 @@ final class ResetTests: XCTestCase {
         XCTAssertNil(sandbox.defaults.string(forKey: "default"))
         XCTAssertEqual(view?.pendingMessageAttributes.isEmpty, true)
     }
+
+    // MARK: user
+
+    private let verified = WidgetConfiguration.User(name: "A", email: "a@x.com", identifier: "a-1", identifierHash: "h")
+
+    /// the page records every window message, so the test can see what the sdk sent
+    private let recorder = "<script>window.__msgs=[];window.addEventListener('message',function(e){window.__msgs.push(String(e.data))})</script>"
+
+    private func sentMessages(_ view: LimechatWidgetView) -> String {
+        (evalJS("window.__msgs.join('|')", in: view.testWebView) as? String) ?? ""
+    }
+
+    func testResetDropsTheUserScriptAndSendsNoSetUserOnTheReloadedPage() {
+        let spy = SpyDelegate()
+        let view = makeView(WidgetConfiguration(websiteToken: "t", user: verified, baseURL: base))
+        view.delegate = spy
+        XCTAssertEqual(view.testWebView.configuration.userContentController.userScripts.count, 1)
+        view.reset()
+        XCTAssertNil(view.configuration?.user)
+        XCTAssertEqual(view.testWebView.configuration.userContentController.userScripts.count, 0)
+        loadPage(recorder, into: view, spy: spy, baseURL: base)
+        XCTAssertFalse(sentMessages(view).contains("set-user"))
+    }
+
+    func testInitializeWithAUserAfterResetSendsSetUserAgain() {
+        let spy = SpyDelegate()
+        let config = WidgetConfiguration(websiteToken: "t", user: verified, baseURL: base)
+        let view = makeView(config)
+        view.delegate = spy
+        view.reset()
+        view.initialize(with: config)
+        XCTAssertEqual(view.testWebView.configuration.userContentController.userScripts.count, 1)
+        loadPage(recorder, into: view, spy: spy, baseURL: base)
+        XCTAssertTrue(sentMessages(view).contains("set-user"))
+    }
 }

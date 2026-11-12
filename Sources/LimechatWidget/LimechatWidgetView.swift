@@ -195,13 +195,14 @@ public class LimechatWidgetView: UIView {
         loadWidget()
     }
     
-    /// `reset()` clears this widget's conversation, like the web SDK's `reset()`: it drops the stored or live conversation token (and a token you passed in, until you pass a new one), drops held message attributes and a held open message, and reloads the page without a conversation if it is showing. It does not close the widget. Call it on logout.
+    /// `reset()` clears this widget's conversation, like the web SDK's `reset()`: it drops the stored or live conversation token and the user (and a token or user you passed in, until you pass new ones), drops held message attributes and a held open message, and reloads the page without a conversation if it is showing. It does not close the widget. Call it on logout.
     /// Before `initialize` the call does nothing.
     public func reset() {
         guard let configuration = configuration else { return }
         ConversationTokenStore.clear(instanceId: instanceId)
         cwConversation = nil
-        self.configuration = configuration.replacingConversationToken(nil)
+        self.configuration = configuration.replacingConversationToken(nil).replacingUser(nil)
+        installUserScript() // removes the old rnUser script, the user is gone so nothing is added back
         pendingMessageAttributes = [:]
         pendingOpen = nil
         loadWidget()
