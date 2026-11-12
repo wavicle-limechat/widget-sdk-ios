@@ -319,13 +319,13 @@ let customAttributes: [String: Any] = [
 Initialize the widget with configuration. `initialMessage` or `initialMessageData` (`["content": ..., "submitted_values": ...]`) opens the widget with that message.
 
 #### `open(message: String)` / `open(messageData: [String: Any])`
-Open the widget with a message. Sent now if the widget is ready, otherwise held and sent at ready. A ready widget is never reloaded. It reloads only when the last load failed, the page was never loaded, or the page finished loading 10 seconds ago and the widget still is not ready. An empty value or a call before `initialize` does nothing. A message object with no `content` and other keys, such as `submitted_values`, gets `content: "Hi"`, as in the web SDK (also for `initialMessageData`). See [Open With a Message](README.md#open-with-a-message).
+Open the widget with a message. Sent now if the widget is ready, otherwise held and sent at ready. A ready widget is never reloaded. It reloads only when the last load failed, the page was never loaded, or the page finished loading 10 seconds ago and the widget still is not ready. An empty value or a call before `initialize` does nothing. A message object with no `content` and other keys, such as `submitted_values`, gets `content: "Hi"`, like the web SDK's `setOpenMessage` (also for `initialMessageData`). See [Open With a Message](README.md#open-with-a-message).
 
 #### `setMessageAttributes(_ attributes: [String: Any]) -> Bool`
 Attach custom attributes to the customer's next message. Returns `false` for an empty or non-JSON value. File attachments and email-only submits do not use up held attributes. `custom_attributes` set explicitly on the message payload win over held ones. See [Message Attributes](README.md#message-attributes). Needs a widget build containing `c8126fb7cd`.
 
 #### `reset()` / `LimechatWidgetView.reset(instanceId:)`
-`reset()` clears this widget's conversation, like the web SDK's `reset()`: it drops the stored or live conversation token and the user (and a token or user you passed in, until you pass new ones), drops held message attributes and a held open message, and reloads the page without a conversation if it is showing. It does not close the widget. Call it on logout. The static form clears the stored token for the given instance only (nil or blank means `"default"`) and does not reload a view that is showing. Before `initialize`, `reset()` does nothing.
+`reset()` clears this widget's conversation, like the web SDK's `reset()`: it drops the stored or live conversation token and the user (and a token or user you passed in, until you pass new ones), drops held message attributes and a held open message, and reloads the page without a conversation if it is showing. It does not close the widget. Call it on logout. The static form clears the stored token for the given instance only (nil or blank means `"default"`) and does not reload a view that is showing. The static `reset(instanceId:)` only clears stored state. If a view is showing, call its `reset()` (or the launcher's) instead, or the view keeps its live token and stores it again. Before `initialize`, `reset()` does nothing.
 
 #### `reload()`
 Load the page again. Before `initialize` it does nothing. Held attributes and open messages stay, sent attributes are lost with the page.
@@ -464,6 +464,9 @@ let configuration = WidgetConfiguration(
 
 ### App Crashes When Picking "Take Photo"
 - Add `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription` to the host app's Info.plist. Without them the app can crash when the user picks "take photo" in the file picker.
+
+### `WidgetConfiguration` Is Ambiguous
+- `WidgetConfiguration` clashes with `SwiftUI.WidgetConfiguration`. In a file that imports both, write `LimechatWidget.WidgetConfiguration`, or build the config in a file that doesn't import SwiftUI.
 
 ### Layout Issues
 - Ensure proper Auto Layout constraints
