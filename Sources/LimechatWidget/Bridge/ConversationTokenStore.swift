@@ -19,4 +19,10 @@ enum ConversationTokenStore {
         memoryCache[instanceId] = token
         defaults.set(token, forKey: instanceId)
     }
+
+    /// Forgets the token for this instance, in memory and in defaults
+    static func clear(instanceId: String) {
+        memoryCache[instanceId] = nil
+        defaults.removeObject(forKey: instanceId)
+    }
 }

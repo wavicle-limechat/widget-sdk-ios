@@ -187,6 +187,26 @@ public class LimechatWidgetView: UIView {
         loadWidget()
     }
     
+    /// `reset()` clears this widget's conversation, like the web SDK's `reset()`: it drops the stored or live conversation token (and a token you passed in, until you pass a new one), drops held message attributes and a held open message, and reloads the page without a conversation if it is showing. It does not close the widget. Call it on logout.
+    /// Before `initialize` the call does nothing.
+    public func reset() {
+        guard let configuration = configuration else { return }
+        ConversationTokenStore.clear(instanceId: instanceId)
+        cwConversation = nil
+        self.configuration = configuration.replacingConversationToken(nil)
+        pendingMessageAttributes = [:]
+        pendingOpen = nil
+        loadWidget()
+    }
+    
+    /// Clears the stored conversation token for `instanceId` (nil or blank means `"default"`).
+    /// Does not reload a view that is showing, use the instance `reset()` for that.
+    public static func reset(instanceId: String?) {
+        let id = instanceId?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            ? instanceId! : ConversationTokenStore.defaultInstanceId
+        ConversationTokenStore.clear(instanceId: id)
+    }
+    
     // MARK: - Private Methods
     
     private func installUserScript() {

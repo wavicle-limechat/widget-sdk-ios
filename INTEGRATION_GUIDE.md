@@ -298,7 +298,7 @@ The verified `set-user` event is sent once per page load, at ready, and only whe
 
 By default the SDK stores the conversation token in `UserDefaults` under `instanceId` and loads it on the next `initialize`. To manage it yourself, pass `conversationToken` and `onConversationTokenChange`. The SDK then stores nothing, and `widgetDidChangeConversationToken(_:)` on the delegate also reports each new token. A re-`initialize` reads the token again from the configuration or the store, so pass a new configuration when the user changes.
 
-**Logout and multiple users.** The stored conversation token is not tied to the user. With no `instanceId` it is saved under the key `"default"`, shared across website tokens. If user A logs out and user B logs in on the same device, B sees A's history and B's user details update A's contact. There is no public clear api yet (planned). Until then, pass a distinct `instanceId` per logged-in user (and per website token if the app uses more than one inbox), or manage the token yourself with `conversationToken` and `onConversationTokenChange` and drop it on logout.
+**Logout and multiple users.** The stored conversation token is not tied to the user. With no `instanceId` it is saved under the key `"default"`, shared across website tokens. If user A logs out and user B logs in on the same device, B sees A's history and B's user details update A's contact. `reset()` clears this widget's conversation, like the web SDK's `reset()`: it drops the stored or live conversation token (and a token you passed in, until you pass a new one), drops held message attributes and a held open message, and reloads the page without a conversation if it is showing. It does not close the widget. Call it on logout. `LimechatWidgetView.reset(instanceId:)` clears the stored token for an instance (nil or blank means `"default"`) without a view, and does not reload a view that is showing. `LimechatWidgetViewController` has `reset()` too. You can also pass a distinct `instanceId` per logged-in user (and per website token if the app uses more than one inbox), or manage the token yourself with `conversationToken` and `onConversationTokenChange`.
 
 ### Custom Attributes
 
@@ -324,6 +324,9 @@ Open the widget with a message. Sent now if the widget is ready, otherwise held 
 #### `setMessageAttributes(_ attributes: [String: Any]) -> Bool`
 Attach custom attributes to the customer's next message. Returns `false` for an empty or non-JSON value. File attachments and email-only submits do not use up held attributes. `custom_attributes` set explicitly on the message payload win over held ones. See [Message Attributes](README.md#message-attributes). Needs a widget build containing `c8126fb7cd`.
 
+#### `reset()` / `LimechatWidgetView.reset(instanceId:)`
+`reset()` clears this widget's conversation, like the web SDK's `reset()`: it drops the stored or live conversation token (and a token you passed in, until you pass a new one), drops held message attributes and a held open message, and reloads the page without a conversation if it is showing. It does not close the widget. Call it on logout. The static form clears the stored token for the given instance only (nil or blank means `"default"`) and does not reload a view that is showing. Before `initialize`, `reset()` does nothing.
+
 #### `reload()`
 Load the page again. Before `initialize` it does nothing. Held attributes and open messages stay, sent attributes are lost with the page.
 
@@ -339,7 +342,7 @@ widgetView.sendMessage(event: "custom-event", data: [
 
 ### LimechatWidgetViewController
 
-`LimechatWidgetViewController` also has `sendMessage`, `open(message:)`, `open(messageData:)`, `setMessageAttributes` and `reload()`, same as the view.
+`LimechatWidgetViewController` also has `sendMessage`, `open(message:)`, `open(messageData:)`, `setMessageAttributes`, `reload()` and `reset()`, same as the view.
 
 #### Static Method
 ```swift

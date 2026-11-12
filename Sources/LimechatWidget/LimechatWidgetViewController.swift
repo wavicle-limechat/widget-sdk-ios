@@ -117,6 +117,12 @@ public class LimechatWidgetViewController: UIViewController {
         widgetView.reload()
     }
     
+    /// `reset()` clears this widget's conversation, like the web SDK's `reset()`: it drops the stored or live conversation token (and a token you passed in, until you pass a new one), drops held message attributes and a held open message, and reloads the page without a conversation if it is showing. It does not close the widget. Call it on logout.
+    public func reset() {
+        loadViewIfNeeded()
+        widgetView.reset()
+    }
+    
     /// Present the widget modally from a view controller
     public static func present(
         from viewController: UIViewController,

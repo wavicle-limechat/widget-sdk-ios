@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > **Upgrade note: unverified contact update.** User details passed to the SDK reach the widget through `rnUser` with no verification. `name`, `email` and `phoneNumber` go out as `contact` with every message, and the server updates the contact each time, and can merge into an existing contact with the same email or phone. If you use identity validation, pass `identifier` and `identifierHash` so the contact is verified.
 
 ### Known issues
-- The stored conversation token is not tied to the user. With no `instanceId` it uses the key `"default"`, shared across website tokens, so a second user on the same device can see the first user's history and update their contact. Pass a distinct `instanceId` per user, or use external token management and drop the token on logout. A public clear api is planned.
+- The key `"default"` is shared across website tokens, so a second user on the same device can see the first user's history and update their contact. Call `LimechatWidgetView.reset(instanceId:)` on logout, or use one `instanceId` per user.
 
 ### Changed
 - `open(messageData:)` and `initialMessageData` with no `content` (missing, null or empty) and at least one other key, such as `submitted_values`, send `content: "Hi"`, as in the web SDK. `{}` and a lone empty `content` are unchanged.
@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - a delegate set on `LimechatWidget` after init is passed to the default icon.
 
 ### Added
+- `reset()` on `LimechatWidgetView` and `LimechatWidgetViewController`, and static `LimechatWidgetView.reset(instanceId:)`. Clears the stored or live conversation token, a token passed in the configuration (until the next `initialize`), held attributes and a held open message, then reloads without a conversation. Does not close the widget. Call it on logout.
 - `setMessageAttributes(_:)` on `LimechatWidgetView`, `LimechatWidgetViewController`, `LimechatWidget` and `LimechatWidgetIcon`. Attaches custom attributes to the customer's next message. Needs a widget build containing `c8126fb7cd`, older builds ignore it. A tap on the default launcher icon delivers attributes set on `LimechatWidget`.
 - `reload()` on `LimechatWidgetView` and `LimechatWidgetViewController`. Before `initialize` the call does nothing.
 - `WidgetConfiguration.User.customAttributes`, sent through `rnUser` and attached to the next message.
