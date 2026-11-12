@@ -140,6 +140,8 @@ widgetView.setMessageAttributes(["order_id": "A-1042", "source": "checkout"])
 ```
 
 - attached as `custom_attributes` to the customer's next message only. Repeat calls merge, later keys win. They are message attributes, not contact attributes.
+- file attachments and email-only submits do not use up held attributes. They stay held for the next message.
+- `custom_attributes` set explicitly on the message payload win over held ones for the same key.
 - the widget's auto-start `Hi` counts as the next message. With no welcome text, no pre-chat form and no conversation, the widget sends `Hi` on its own. If you did not call `open(message:)`, the attributes can land on `Hi` and not on what the customer types.
 - call it at any time. They are held until the widget is ready, and sent before an `open` message, so the first message carries them.
 - on `LimechatWidget` and `LimechatWidgetIcon`, attributes reach the widget when the user taps the icon or you call `open`.

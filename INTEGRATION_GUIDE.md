@@ -318,7 +318,7 @@ Initialize the widget with configuration. `initialMessage` or `initialMessageDat
 Open the widget with a message. Sent now if the widget is ready, otherwise held and sent at ready. A ready widget is never reloaded. If no load is running, `open` starts one. An empty value or a call before `initialize` does nothing. See [Open With a Message](README.md#open-with-a-message).
 
 #### `setMessageAttributes(_ attributes: [String: Any]) -> Bool`
-Attach custom attributes to the customer's next message. Returns `false` for an empty or non-JSON value. See [Message Attributes](README.md#message-attributes). Needs a widget build containing `c8126fb7cd`.
+Attach custom attributes to the customer's next message. Returns `false` for an empty or non-JSON value. File attachments and email-only submits do not use up held attributes. `custom_attributes` set explicitly on the message payload win over held ones. See [Message Attributes](README.md#message-attributes). Needs a widget build containing `c8126fb7cd`.
 
 #### `reload()`
 Load the page again. Before `initialize` it does nothing. Held attributes and open messages stay, sent attributes are lost with the page.
