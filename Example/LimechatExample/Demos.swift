@@ -115,8 +115,7 @@ struct LauncherDemo: View {
             }
             HStack {
                 ActionRow(title: "Attributes") { _ = handle.launcher?.setMessageAttributes(ExampleConfig.messageAttributes) }
-                // the launcher has no instance reset, this clears the stored conversation for the instance
-                ActionRow(title: "Reset") { LimechatWidgetView.reset(instanceId: ExampleConfig.instanceId) }
+                ActionRow(title: "Reset") { handle.launcher?.reset() }
             }
             Text(log.last).font(.footnote).lineLimit(2)
             LauncherHost(identified: identified, handle: handle, log: log)

@@ -86,6 +86,53 @@ final class LauncherTests: XCTestCase {
         XCTAssertEqual(spy.calls, [.error("Configuration Error: Cannot find view controller")])
     }
 
+    // MARK: launcher reset
+
+    private let external = WidgetConfiguration(websiteToken: "tok", user: .init(email: "a@x.com", identifier: "a"),
+                                               conversationToken: "ext", onConversationTokenChange: { _ in })
+
+    func testIconResetInExternalModeOpensWithNoOldToken() {
+        let sandbox = TokenStoreSandbox()
+        defer { sandbox.tearDown() }
+        let icon = LimechatWidgetIcon()
+        icon.initialize(with: external)
+        icon.liveConversationToken = "live"
+        XCTAssertEqual(icon.configuration?.withLiveToken(icon.liveConversationToken).conversationToken, "live")
+        icon.reset()
+        XCTAssertNil(icon.liveConversationToken)
+        XCTAssertNil(icon.configuration?.withLiveToken(icon.liveConversationToken).conversationToken)
+    }
+
+    func testIconResetDropsHeldAttributesTheUserAndTheStoredToken() {
+        let sandbox = TokenStoreSandbox()
+        defer { sandbox.tearDown() }
+        ConversationTokenStore.save("stored", instanceId: "default")
+        let icon = LimechatWidgetIcon()
+        icon.initialize(with: external)
+        icon.setMessageAttributes(["k": 1])
+        icon.reset()
+        XCTAssertTrue(icon.pendingMessageAttributes.isEmpty)
+        XCTAssertNil(icon.configuration?.user)
+        XCTAssertNil(ConversationTokenStore.load(instanceId: "default"))
+        icon.initialize(with: external)
+        XCTAssertEqual(icon.configuration?.user?.identifier, "a")
+    }
+
+    func testLauncherResetWithTheDefaultIconAndWithACustomButton() {
+        let sandbox = TokenStoreSandbox()
+        defer { sandbox.tearDown() }
+        for button in [nil, UIButton()] as [UIView?] {
+            let launcher = LimechatWidget(configuration: external, customButton: button)
+            launcher.setMessageAttributes(["k": 1])
+            launcher.liveConversationToken = "live"
+            launcher.reset()
+            XCTAssertTrue(launcher.pendingMessageAttributes.isEmpty)
+            XCTAssertNil(launcher.liveConversationToken)
+            XCTAssertNil(launcher.configuration.user)
+            XCTAssertNil(launcher.configuration.conversationToken)
+        }
+    }
+
     // MARK: held attributes and user switch
 
     func testHeldAttributesAreDroppedWhenTheUserSwitches() {

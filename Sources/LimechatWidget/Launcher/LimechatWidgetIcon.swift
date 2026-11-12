@@ -5,7 +5,7 @@ public class LimechatWidgetIcon: UIView {
     
     // MARK: - Properties
     
-    private var configuration: WidgetConfiguration?
+    private(set) var configuration: WidgetConfiguration?
     private var iconImageView: UIImageView!
     private var unreadCountLabel: UILabel?
     var pendingMessageAttributes: [String: Any] = [:]
@@ -146,6 +146,17 @@ public class LimechatWidgetIcon: UIView {
                 self.iconImageView.image = image
             }
         }
+    }
+    
+    /// Clears this launcher's conversation: the live token, held message attributes, and the user and token from its configuration
+    /// (until `initialize(with:)` gets new ones). Also resets the stored token and a widget presented from here. Call it on logout.
+    public func reset() {
+        guard let configuration = configuration else { return }
+        pendingMessageAttributes = [:]
+        liveConversationToken = nil
+        self.configuration = configuration.replacingConversationToken(nil).replacingUser(nil)
+        LimechatWidgetView.reset(instanceId: configuration.instanceId)
+        LimechatWidgetViewController.presented(from: findViewController(), for: configuration)?.reset()
     }
     
     /// Update unread count

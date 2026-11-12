@@ -252,6 +252,20 @@ public class LimechatWidget: UIView {
         return true
     }
     
+    /// Clears this launcher's conversation: the live token, held message attributes, and the user and token from its configuration
+    /// (until `apply(_:)` gets new ones). Also resets the stored token and a widget presented from here. Call it on logout.
+    public func reset() {
+        if let icon = widgetIcon {
+            icon.reset()
+        } else {
+            ownPendingMessageAttributes = [:]
+            ownLiveConversationToken = nil
+            LimechatWidgetView.reset(instanceId: configuration.instanceId)
+            LimechatWidgetViewController.presented(from: findViewController(), for: configuration)?.reset()
+        }
+        configuration = configuration.replacingConversationToken(nil).replacingUser(nil)
+    }
+    
     /// Take a new configuration from the swiftui wrapper. A new user drops held attributes and the live token
     func apply(_ new: WidgetConfiguration) {
         if !configuration.isSameIdentity(as: new) {
