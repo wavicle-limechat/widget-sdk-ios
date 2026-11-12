@@ -43,9 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 - `LimechatWidget.containerStyle` is unused and is removed at the next major.
-
-### Removed
-- `WidgetError.networkError` and `WidgetError.unknownError`. Nothing in the SDK produced them. An exhaustive `switch` over `WidgetError` must be updated.
+- `WidgetError.networkError`, `WidgetError.unknownError` and `WidgetError.from(_:)` are never produced by the sdk, removed at the next major.
 
 ## [0.0.1] - 2025-08-20
 
