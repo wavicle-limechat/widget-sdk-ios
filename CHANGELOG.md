@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 > **Upgrade note: unverified contact update.** User details passed to the SDK reach the widget through `rnUser` with no verification. On the customer's first message the server updates the contact, and can merge into an existing contact with the same email or phone. If you use identity validation, pass `identifier` and `identifierHash` so the contact is verified.
 
+### Breaking
+- the swiftui wrapper `LimechatWidgetView` is renamed `LimechatWidgetSwiftUIView`. the old name cannot stay as a deprecated alias, because `LimechatWidgetView` is also the public uikit `UIView` class, and that class keeps its name. on develop both types shared the name in one module, which is a redeclaration error, so the name never resolved to the swiftui wrapper in a build that compiles. swiftui hosts: replace `LimechatWidgetView(...)` with `LimechatWidgetSwiftUIView(...)`. uikit hosts using `LimechatWidgetView(frame:)` change nothing.
+
 ### Changed
 - `LimechatWidgetIcon.initialize(with:)` drops held message attributes when the user (`identifier`, `email`, `phoneNumber`) or `conversationToken` changes, so a new user's first message does not carry the previous user's attributes. Same user keeps them. A token that first arrives (empty or nil to a value) is not a change.
 - `widgetDidLoad` fires once per page load, when the widget is ready to receive messages, not on page finish. A failed page gives `widgetDidReceiveError` and no `widgetDidLoad`.
