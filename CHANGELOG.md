@@ -53,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - held attributes stay held when the send cannot be serialised.
 
 ### Deprecated
+- `WidgetConfiguration.colorScheme` and `WidgetConfiguration.ColorScheme` are ignored by the widget and will be removed in the next major release.
 - `LimechatWidget.containerStyle` is unused and will be removed in the next major release.
 - `WidgetError.networkError`, `WidgetError.unknownError` and `WidgetError.from(_:)` are never produced by the sdk and will be removed in the next major release.
 

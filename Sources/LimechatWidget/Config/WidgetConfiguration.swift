@@ -10,6 +10,7 @@ public struct WidgetConfiguration {
     public let locale: String
     
     /// Color scheme for the widget
+    @available(*, deprecated, message: "Ignored by the widget. Will be removed in the next major release.")
     public let colorScheme: ColorScheme
     
     /// User information
@@ -34,6 +35,7 @@ public struct WidgetConfiguration {
     public let hideFilePicker: Bool
     
     /// Color scheme options
+    @available(*, deprecated, message: "Ignored by the widget. Will be removed in the next major release.")
     public enum ColorScheme: String, CaseIterable {
         case light = "light"
         case dark = "dark"
