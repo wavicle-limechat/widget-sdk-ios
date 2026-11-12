@@ -346,6 +346,44 @@ final class LauncherTests: XCTestCase {
         window.isHidden = true
     }
 
+    // MARK: swiftui delegate
+
+    func testSwiftUICoordinatorKeepsAnInlineDelegateAlive() {
+        weak var weakDelegate: SpyDelegate?
+        var coordinator: LimechatWidgetSwiftUIView.Coordinator?
+        autoreleasepool {
+            let inline = SpyDelegate()
+            weakDelegate = inline
+            coordinator = LimechatWidgetSwiftUIView(configuration: config, delegate: inline).makeCoordinator()
+        }
+        XCTAssertNotNil(weakDelegate)
+        coordinator = nil
+        XCTAssertNil(weakDelegate)
+    }
+
+    func testSwiftUIUpdatePassesANewDelegateToTheLauncher() {
+        let first = SpyDelegate()
+        let second = SpyDelegate()
+        let widget = LimechatWidget(configuration: config, delegate: first)
+        let coordinator = LimechatWidgetSwiftUIView(configuration: config, delegate: first).makeCoordinator()
+        let view = LimechatWidgetSwiftUIView(configuration: config, delegate: second)
+        view.update(widget, coordinator: coordinator)
+        XCTAssertTrue(widget.delegate === second)
+        XCTAssertTrue(coordinator.delegate === second)
+        XCTAssertTrue(widget.allSubviews(of: LimechatWidgetIcon.self).first?.delegate === second)
+    }
+
+    func testDelegateChangeReachesThePresentedWidget() {
+        let (host, window) = visibleHost()
+        let w = LimechatWidget(configuration: config, delegate: SpyDelegate())
+        host.view.addSubview(w)
+        w.open(message: "hi")
+        let next = SpyDelegate()
+        w.delegate = next
+        XCTAssertTrue((host.presentedViewController as? LimechatWidgetViewController)?.widgetDelegate === next)
+        window.isHidden = true
+    }
+
     // MARK: setMessageAttributes
 
     private func presentedWidgetView(_ host: UIViewController) -> LimechatWidgetView? {

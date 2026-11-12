@@ -18,14 +18,33 @@ public struct LimechatWidgetSwiftUIView: UIViewRepresentable {
         self.delegate = delegate
     }
     
+    /// Holds the delegate strongly: `LimechatWidget.delegate` is weak, so an inline delegate would be freed
+    public final class Coordinator {
+        var delegate: LimechatWidgetDelegate?
+        
+        init(delegate: LimechatWidgetDelegate?) {
+            self.delegate = delegate
+        }
+    }
+    
+    public func makeCoordinator() -> Coordinator {
+        Coordinator(delegate: delegate)
+    }
+    
     public func makeUIView(context: Context) -> LimechatWidget {
         return LimechatWidget(
             configuration: configuration,
             customButton: customButton,
-            delegate: delegate
+            delegate: context.coordinator.delegate
         )
     }
     
     public func updateUIView(_ uiView: LimechatWidget, context: Context) {
+        update(uiView, coordinator: context.coordinator)
+    }
+    
+    func update(_ uiView: LimechatWidget, coordinator: Coordinator) {
+        coordinator.delegate = delegate
+        if uiView.delegate !== delegate { uiView.delegate = delegate }
     }
 }

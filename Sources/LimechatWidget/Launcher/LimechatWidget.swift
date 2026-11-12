@@ -18,7 +18,10 @@ public class LimechatWidget: UIView {
     
     /// Widget delegate for callbacks
     public weak var delegate: LimechatWidgetDelegate? {
-        didSet { widgetIcon?.delegate = delegate }
+        didSet {
+            widgetIcon?.delegate = delegate
+            LimechatWidgetViewController.presented(from: findViewController(), for: configuration)?.widgetDelegate = delegate
+        }
     }
     
     /// Style for the container
