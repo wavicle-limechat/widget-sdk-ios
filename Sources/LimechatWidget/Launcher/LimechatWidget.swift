@@ -7,7 +7,7 @@ public class LimechatWidget: UIView {
     // MARK: - Properties
     
     /// Widget configuration
-    public let configuration: WidgetConfiguration
+    public private(set) var configuration: WidgetConfiguration
     
     /// Optional custom button view
     public var customButton: UIView? {
@@ -60,6 +60,19 @@ public class LimechatWidget: UIView {
             }
         }
     }
+    private var ownLiveConversationToken: String?
+    /// One carrier, same as the attributes: the default icon holds it when there is one
+    var liveConversationToken: String? {
+        get { widgetIcon != nil ? widgetIcon?.liveConversationToken : ownLiveConversationToken }
+        set {
+            if let icon = widgetIcon {
+                icon.liveConversationToken = newValue
+                ownLiveConversationToken = nil
+            } else {
+                ownLiveConversationToken = newValue
+            }
+        }
+    }
     private var unreadCount: Int = 0 {
         didSet {
             updateUnreadCount()
@@ -94,6 +107,7 @@ public class LimechatWidget: UIView {
     
     private func setupWidget() {
         let held = pendingMessageAttributes
+        let heldToken = liveConversationToken
         subviews.forEach { $0.removeFromSuperview() }
         widgetIcon = nil
         customButtonContainer = nil
@@ -108,6 +122,7 @@ public class LimechatWidget: UIView {
         setupUnreadCountBadge()
         applyStyles()
         pendingMessageAttributes = held
+        liveConversationToken = heldToken
     }
     
     private func setupCustomButton(_ button: UIView) {
@@ -212,8 +227,9 @@ public class LimechatWidget: UIView {
             }
             return
         }
-        let widget = LimechatWidgetViewController(configuration: configuration, initialMessage: message, initialMessageData: messageData)
+        let widget = LimechatWidgetViewController(configuration: configuration.withLiveToken(liveConversationToken), initialMessage: message, initialMessageData: messageData)
         widget.widgetDelegate = delegate
+        widget.onLiveToken = { [weak self] in self?.liveConversationToken = $0 }
         widget.onDismissWithHeldAttributes = { [weak self] held in
             guard let self = self else { return }
             self.pendingMessageAttributes.merge(held) { current, _ in current }
@@ -234,6 +250,16 @@ public class LimechatWidget: UIView {
         }
         pendingMessageAttributes.merge(attributes) { _, new in new }
         return true
+    }
+    
+    /// Take a new configuration from the swiftui wrapper. A new user drops held attributes and the live token
+    func apply(_ new: WidgetConfiguration) {
+        if !configuration.isSameIdentity(as: new) {
+            pendingMessageAttributes = [:]
+            liveConversationToken = nil
+        }
+        configuration = new
+        widgetIcon?.initialize(with: new)
     }
     
     /// Update unread count

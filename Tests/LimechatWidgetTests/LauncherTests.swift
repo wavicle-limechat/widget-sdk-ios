@@ -384,6 +384,120 @@ final class LauncherTests: XCTestCase {
         window.isHidden = true
     }
 
+    // MARK: live token and config updates
+
+    private var externalConfig: WidgetConfiguration {
+        WidgetConfiguration(websiteToken: "tok", conversationToken: "old", onConversationTokenChange: { _ in })
+    }
+
+    private func presentedController(_ host: UIViewController) -> LimechatWidgetViewController? {
+        host.presentedViewController as? LimechatWidgetViewController
+    }
+
+    /// dismissal never completes in the spm runner, so the launcher moves to a fresh host as if the widget was closed
+    private func moveToFreshHost(_ view: UIView) -> (UIViewController, UIWindow) {
+        let fresh = visibleHost()
+        fresh.0.view.addSubview(view)
+        return fresh
+    }
+
+    func testLauncherCarriesTheLiveTokenToTheNextOpenInExternalMode() {
+        for customButton in [nil, UIView()] {
+            let (host, window) = visibleHost()
+            let w = LimechatWidget(configuration: externalConfig, customButton: customButton)
+            host.view.addSubview(w)
+            w.open()
+            XCTAssertEqual(presentedWidgetView(host)?.configuration?.conversationToken, "old")
+            presentedController(host)?.widgetDidChangeConversationToken("live")
+            let (host2, window2) = moveToFreshHost(w)
+            w.open()
+            XCTAssertEqual(presentedWidgetView(host2)?.configuration?.conversationToken, "live")
+            XCTAssertEqual(presentedWidgetView(host2)?.cwConversation, "live")
+            XCTAssertEqual(w.configuration.conversationToken, "old")
+            window.isHidden = true
+            window2.isHidden = true
+        }
+    }
+
+    func testIconCarriesTheLiveTokenToTheNextTapInExternalMode() {
+        let (host, window) = visibleHost()
+        let icon = host.addWidgetIcon(configuration: externalConfig, customIcon: UIImage())
+        icon.perform(NSSelectorFromString("iconTapped"))
+        presentedController(host)?.widgetDidChangeConversationToken("live")
+        let (host2, window2) = moveToFreshHost(icon)
+        icon.perform(NSSelectorFromString("iconTapped"))
+        XCTAssertEqual(presentedWidgetView(host2)?.configuration?.conversationToken, "live")
+        window.isHidden = true
+        window2.isHidden = true
+    }
+
+    func testInternalModeDoesNotPutTheTokenInTheConfig() {
+        let (host, window) = visibleHost()
+        let w = LimechatWidget(configuration: config)
+        host.view.addSubview(w)
+        w.open()
+        presentedController(host)?.widgetDidChangeConversationToken("live")
+        let (host2, window2) = moveToFreshHost(w)
+        w.open()
+        XCTAssertNotNil(presentedWidgetView(host2))
+        XCTAssertNil(presentedWidgetView(host2)?.configuration?.conversationToken)
+        window.isHidden = true
+        window2.isHidden = true
+    }
+
+    func testLiveTokenIsDroppedWhenTheIdentityChanges() {
+        let (host, window) = visibleHost()
+        let w = LimechatWidget(configuration: WidgetConfiguration(websiteToken: "tok", user: .init(identifier: "a"),
+                                                                  onConversationTokenChange: { _ in }))
+        host.view.addSubview(w)
+        w.open()
+        presentedController(host)?.widgetDidChangeConversationToken("live")
+        XCTAssertEqual(w.liveConversationToken, "live")
+        w.apply(WidgetConfiguration(websiteToken: "tok", user: .init(identifier: "b"), onConversationTokenChange: { _ in }))
+        XCTAssertNil(w.liveConversationToken)
+        let (host2, window2) = moveToFreshHost(w)
+        w.open()
+        XCTAssertNotNil(presentedWidgetView(host2))
+        XCTAssertNil(presentedWidgetView(host2)?.configuration?.conversationToken)
+        window.isHidden = true
+        window2.isHidden = true
+    }
+
+    func testSwiftUIUpdateAppliesANewConfiguration() {
+        let widget = LimechatWidget(configuration: config)
+        let next = WidgetConfiguration(websiteToken: "tok", user: .init(name: "N", identifier: "b"), instanceId: "user-b")
+        let view = LimechatWidgetSwiftUIView(configuration: next)
+        view.update(widget, coordinator: view.makeCoordinator())
+        XCTAssertEqual(widget.configuration.user?.identifier, "b")
+        XCTAssertEqual(widget.configuration.instanceId, "user-b")
+    }
+
+    func testSwiftUIUpdateWithANewUserDropsHeldAttributes() {
+        let widget = LimechatWidget(configuration: WidgetConfiguration(websiteToken: "tok", user: .init(identifier: "a")))
+        XCTAssertTrue(widget.setMessageAttributes(["k": 1]))
+        let same = LimechatWidgetSwiftUIView(configuration: WidgetConfiguration(websiteToken: "tok", user: .init(name: "A2", identifier: "a")))
+        same.update(widget, coordinator: same.makeCoordinator())
+        XCTAssertEqual(widget.pendingMessageAttributes as NSDictionary, ["k": 1])
+        let other = LimechatWidgetSwiftUIView(configuration: WidgetConfiguration(websiteToken: "tok", user: .init(identifier: "b")))
+        other.update(widget, coordinator: other.makeCoordinator())
+        XCTAssertTrue(widget.pendingMessageAttributes.isEmpty)
+    }
+
+    func testSwiftUIUpdateWithTheSameConfigurationDoesNotRefetchTheIcon() {
+        CountingURLProtocol.count = 0
+        URLProtocol.registerClass(CountingURLProtocol.self)
+        defer { URLProtocol.unregisterClass(CountingURLProtocol.self) }
+        let own = WidgetConfiguration(websiteToken: "t", baseURL: "https://custom-icon-test.invalid")
+        let widget = LimechatWidget(configuration: own)
+        RunLoop.main.run(until: Date().addingTimeInterval(1))
+        XCTAssertEqual(CountingURLProtocol.count, 1)
+        let view = LimechatWidgetSwiftUIView(configuration: WidgetConfiguration(websiteToken: "t", baseURL: "https://custom-icon-test.invalid"))
+        view.update(widget, coordinator: view.makeCoordinator())
+        view.update(widget, coordinator: view.makeCoordinator())
+        RunLoop.main.run(until: Date().addingTimeInterval(1))
+        XCTAssertEqual(CountingURLProtocol.count, 1)
+    }
+
     // MARK: setMessageAttributes
 
     private func presentedWidgetView(_ host: UIViewController) -> LimechatWidgetView? {

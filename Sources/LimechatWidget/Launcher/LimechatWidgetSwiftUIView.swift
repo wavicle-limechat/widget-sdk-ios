@@ -46,5 +46,6 @@ public struct LimechatWidgetSwiftUIView: UIViewRepresentable {
     func update(_ uiView: LimechatWidget, coordinator: Coordinator) {
         coordinator.delegate = delegate
         if uiView.delegate !== delegate { uiView.delegate = delegate }
+        uiView.apply(configuration)
     }
 }

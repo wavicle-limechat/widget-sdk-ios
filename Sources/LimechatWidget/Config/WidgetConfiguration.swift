@@ -127,3 +127,28 @@ public struct WidgetConfiguration {
         self.hideFilePicker = hideFilePicker
     }
 }
+
+extension WidgetConfiguration {
+    /// Same configuration with another `conversationToken`
+    func replacingConversationToken(_ token: String?) -> WidgetConfiguration {
+        WidgetConfiguration(
+            websiteToken: websiteToken,
+            locale: locale,
+            colorScheme: colorScheme,
+            user: user,
+            customAttributes: customAttributes,
+            baseURL: baseURL,
+            conversationToken: token,
+            onConversationTokenChange: onConversationTokenChange,
+            instanceId: instanceId,
+            hideFilePicker: hideFilePicker
+        )
+    }
+    
+    /// Under external token management the sdk stores nothing, so a launcher carries the live token
+    /// into the next open. Otherwise the configuration is returned as is.
+    func withLiveToken(_ token: String?) -> WidgetConfiguration {
+        guard onConversationTokenChange != nil, let token = token, !token.isEmpty else { return self }
+        return replacingConversationToken(token)
+    }
+}

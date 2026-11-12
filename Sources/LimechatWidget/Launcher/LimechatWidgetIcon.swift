@@ -9,6 +9,8 @@ public class LimechatWidgetIcon: UIView {
     private var iconImageView: UIImageView!
     private var unreadCountLabel: UILabel?
     var pendingMessageAttributes: [String: Any] = [:]
+    /// the last token the widget reported. used on the next tap under external token management
+    var liveConversationToken: String?
     private var unreadCount: Int = 0 {
         didSet {
             updateUnreadCount()
@@ -127,11 +129,16 @@ public class LimechatWidgetIcon: UIView {
     
     /// Initialize the widget icon with configuration
     public func initialize(with configuration: WidgetConfiguration) {
-        // held attributes belong to the previous user: drop them when the user or token changes
-        if let old = self.configuration, !old.isSameIdentity(as: configuration) { pendingMessageAttributes = [:] }
+        // held attributes and the live token belong to the previous user: drop them when the user or token changes
+        let old = self.configuration
+        if let old = old, !old.isSameIdentity(as: configuration) {
+            pendingMessageAttributes = [:]
+            liveConversationToken = nil
+        }
         self.configuration = configuration
         
         guard customIcon == nil else { return }
+        if let old = old, old.websiteToken == configuration.websiteToken, old.baseURL == configuration.baseURL { return }
         WidgetConfigFetcher.fetchIcon(configuration: configuration) { [weak self] image in
             guard let image = image else { return }
             DispatchQueue.main.async {
@@ -158,8 +165,9 @@ public class LimechatWidgetIcon: UIView {
             return
         }
         
-        let widget = LimechatWidgetViewController(configuration: configuration)
+        let widget = LimechatWidgetViewController(configuration: configuration.withLiveToken(liveConversationToken))
         widget.widgetDelegate = delegate
+        widget.onLiveToken = { [weak self] in self?.liveConversationToken = $0 }
         widget.onDismissWithHeldAttributes = { [weak self] held in
             guard let self = self else { return }
             self.pendingMessageAttributes.merge(held) { current, _ in current }

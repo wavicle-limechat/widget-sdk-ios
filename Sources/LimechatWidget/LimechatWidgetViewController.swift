@@ -13,6 +13,8 @@ public class LimechatWidgetViewController: UIViewController {
     public weak var widgetDelegate: LimechatWidgetDelegate?
     /// set by the launchers. gets the attributes that were never flushed when the controller is dismissed
     var onDismissWithHeldAttributes: (([String: Any]) -> Void)?
+    /// set by the launchers. gets every live conversation token, before the host delegate
+    var onLiveToken: ((String) -> Void)?
     
     // MARK: - Initialization
     
@@ -156,6 +158,7 @@ extension LimechatWidgetViewController: LimechatWidgetDelegate {
     }
     
     public func widgetDidChangeConversationToken(_ token: String) {
+        onLiveToken?(token)
         widgetDelegate?.widgetDidChangeConversationToken(token)
     }
 }
