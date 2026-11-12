@@ -104,6 +104,22 @@ final class LauncherTests: XCTestCase {
         XCTAssertTrue(icon.pendingMessageAttributes.isEmpty)
     }
 
+    func testHeldAttributesSurviveTheFirstTokenArriving() {
+        let icon = LimechatWidgetIcon()
+        icon.initialize(with: WidgetConfiguration(websiteToken: "tok"))
+        icon.setMessageAttributes(["k": 1])
+        icon.initialize(with: WidgetConfiguration(websiteToken: "tok", conversationToken: "x"))
+        XCTAssertFalse(icon.pendingMessageAttributes.isEmpty)
+    }
+
+    func testHeldAttributesAreDroppedWhenTheTokenIsCleared() {
+        let icon = LimechatWidgetIcon()
+        icon.initialize(with: WidgetConfiguration(websiteToken: "tok", conversationToken: "x"))
+        icon.setMessageAttributes(["k": 1])
+        icon.initialize(with: WidgetConfiguration(websiteToken: "tok"))
+        XCTAssertTrue(icon.pendingMessageAttributes.isEmpty)
+    }
+
     func testHeldAttributesAreDroppedOnLogout() {
         let icon = LimechatWidgetIcon()
         icon.initialize(with: WidgetConfiguration(websiteToken: "tok", user: .init(email: "a@x.com")))

@@ -148,7 +148,7 @@ widgetView.setMessageAttributes(["order_id": "A-1042", "source": "checkout"])
 - returns `false` for an empty dictionary or a value that is not valid JSON, such as `Date` or `Double.nan`. Pass JSON values.
 - after the customer's message is sent, the widget clears them. If that message fails, the widget keeps them for the next one. Attributes already sent to the widget are lost on a page reload. Attributes still held are kept.
 - on the launchers, attributes that were not sent yet when the user closes the widget stay held and go out the next time it opens. Held open messages are not kept. Attributes already sent are lost when the widget closes, since each open is a new page. Set them again.
-- on `LimechatWidgetIcon`, held attributes are dropped when `initialize(with:)` is called with another user (`identifier`, `email` or `phoneNumber`) or another `conversationToken`, including a user that is cleared. They are kept for the same user. `LimechatWidget` takes its configuration once, so a new user means a new launcher with an empty buffer.
+- on `LimechatWidgetIcon`, held attributes are dropped when `initialize(with:)` is called with another user (`identifier`, `email` or `phoneNumber`) or when a non-empty `conversationToken` changes or is cleared, including a user that is cleared. A token that first arrives (empty or nil to a value) does not drop them. They are kept for the same user. `LimechatWidget` takes its configuration once, so a new user means a new launcher with an empty buffer.
 - call from the main thread.
 - needs a widget build containing `c8126fb7cd` (pr #120, 2026-09-25). Older builds ignore it silently.
 

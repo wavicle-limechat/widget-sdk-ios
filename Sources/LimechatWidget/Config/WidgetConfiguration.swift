@@ -52,8 +52,13 @@ public struct WidgetConfiguration {
     
     /// User information structure
     /// Who the host says the user is: identifier, email, phone and the external token. Name and attributes are not identity
-    var userIdentity: [String?] {
-        [user?.identifier, user?.email, user?.phoneNumber, conversationToken]
+    /// A token going from empty or nil to a value is not a switch (the host echoes it back after the first session).
+    /// A token that changes from a non-empty value, or is cleared, is a switch. Empty and nil are the same
+    func isSameIdentity(as new: WidgetConfiguration) -> Bool {
+        let fields = { (c: WidgetConfiguration) in [c.user?.identifier, c.user?.email, c.user?.phoneNumber] }
+        guard fields(self) == fields(new) else { return false }
+        guard let old = conversationToken, !old.isEmpty else { return true }
+        return new.conversationToken == old
     }
 
     public struct User: Codable {

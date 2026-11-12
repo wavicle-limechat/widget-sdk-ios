@@ -128,7 +128,7 @@ public class LimechatWidgetIcon: UIView {
     /// Initialize the widget icon with configuration
     public func initialize(with configuration: WidgetConfiguration) {
         // held attributes belong to the previous user: drop them when the user or token changes
-        if let old = self.configuration, old.userIdentity != configuration.userIdentity { pendingMessageAttributes = [:] }
+        if let old = self.configuration, !old.isSameIdentity(as: configuration) { pendingMessageAttributes = [:] }
         self.configuration = configuration
         
         guard customIcon == nil else { return }

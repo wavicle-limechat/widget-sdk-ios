@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > **Upgrade note: unverified contact update.** User details passed to the SDK reach the widget through `rnUser` with no verification. On the customer's first message the server updates the contact, and can merge into an existing contact with the same email or phone. If you use identity validation, pass `identifier` and `identifierHash` so the contact is verified.
 
 ### Changed
-- `LimechatWidgetIcon.initialize(with:)` drops held message attributes when the user (`identifier`, `email`, `phoneNumber`) or `conversationToken` changes, so a new user's first message does not carry the previous user's attributes. Same user keeps them.
+- `LimechatWidgetIcon.initialize(with:)` drops held message attributes when the user (`identifier`, `email`, `phoneNumber`) or `conversationToken` changes, so a new user's first message does not carry the previous user's attributes. Same user keeps them. A token that first arrives (empty or nil to a value) is not a change.
 - `widgetDidLoad` fires once per page load, when the widget is ready to receive messages, not on page finish. A failed page gives `widgetDidReceiveError` and no `widgetDidLoad`.
 - `open(message:)` and `open(messageData:)` send now when the widget is ready and never reload a ready widget. When it is not ready the message is held and sent at ready, with no message in the url. An empty value does nothing.
 - `widgetDidReceiveUnreadCount` is optional on `LimechatWidgetDelegate`.
