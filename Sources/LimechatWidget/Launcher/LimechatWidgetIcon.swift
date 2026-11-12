@@ -5,9 +5,12 @@ public class LimechatWidgetIcon: UIView {
     
     // MARK: - Properties
     
-    private var configuration: WidgetConfiguration?
+    private(set) var configuration: WidgetConfiguration?
     private var iconImageView: UIImageView!
     private var unreadCountLabel: UILabel?
+    var pendingMessageAttributes: [String: Any] = [:]
+    /// the last token the widget reported. used on the next tap under external token management
+    var liveConversationToken: String?
     private var unreadCount: Int = 0 {
         didSet {
             updateUnreadCount()
@@ -24,11 +27,7 @@ public class LimechatWidgetIcon: UIView {
     }
     
     /// Icon size (default: 60x60)
-    public var iconSize: CGFloat = 60 {
-        didSet {
-            updateConstraints()
-        }
-    }
+    public var iconSize: CGFloat = 60
     
     /// Corner radius (default: 30)
     public var cornerRadius: CGFloat = 30 {
@@ -37,17 +36,14 @@ public class LimechatWidgetIcon: UIView {
         }
     }
     
-    /// Background color (default: system blue)
-    public var backgroundColor: UIColor = .systemBlue {
-        didSet {
-            self.backgroundColor = backgroundColor
-        }
-    }
-    
     /// Tint color (default: white)
-    public var tintColor: UIColor = .white {
-        didSet {
-            iconImageView.tintColor = tintColor
+    public override var tintColor: UIColor! {
+        get {
+            return super.tintColor
+        }
+        set {
+            super.tintColor = newValue
+            iconImageView?.tintColor = newValue
         }
     }
     
@@ -66,7 +62,6 @@ public class LimechatWidgetIcon: UIView {
     // MARK: - Setup
     
     private func setupViews() {
-        // Configure container view
         backgroundColor = .systemBlue
         layer.cornerRadius = cornerRadius
         layer.shadowColor = UIColor.black.cgColor
@@ -74,11 +69,9 @@ public class LimechatWidgetIcon: UIView {
         layer.shadowRadius = 4
         layer.shadowOpacity = 0.2
         
-        // Add tap gesture
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(iconTapped))
         addGestureRecognizer(tapGesture)
         
-        // Setup icon image view
         iconImageView = UIImageView()
         iconImageView.contentMode = .scaleAspectFit
         iconImageView.tintColor = .white
@@ -92,7 +85,6 @@ public class LimechatWidgetIcon: UIView {
             iconImageView.heightAnchor.constraint(equalTo: heightAnchor, multiplier: 0.6)
         ])
         
-        // Set default icon
         updateIcon()
     }
     
@@ -100,13 +92,7 @@ public class LimechatWidgetIcon: UIView {
         if let customIcon = customIcon {
             iconImageView.image = customIcon
         } else {
-            // Use default message icon
-            if #available(iOS 13.0, *) {
-                iconImageView.image = UIImage(systemName: "message.fill")
-            } else {
-                // Fallback for older iOS versions
-                iconImageView.image = UIImage(named: "message_icon")
-            }
+            iconImageView.image = UIImage(systemName: "message.fill")
         }
     }
     
@@ -132,23 +118,45 @@ public class LimechatWidgetIcon: UIView {
                     ])
                 }
             }
-            unreadCountLabel?.text = unreadCount > 99 ? "99+" : "\(unreadCount)"
+            unreadCountLabel?.text = unreadBadgeText(unreadCount)
         } else {
             unreadCountLabel?.removeFromSuperview()
             unreadCountLabel = nil
         }
     }
     
-    private func updateConstraints() {
-        // Update size constraints if needed
-        // This would be handled by the parent view controller
-    }
-    
     // MARK: - Public Methods
     
     /// Initialize the widget icon with configuration
     public func initialize(with configuration: WidgetConfiguration) {
+        // held attributes and the live token belong to the previous user: drop them when the user or token changes
+        let old = self.configuration
+        if let old = old, !old.isSameIdentity(as: configuration) {
+            pendingMessageAttributes = [:]
+            liveConversationToken = nil
+        }
         self.configuration = configuration
+        
+        guard customIcon == nil else { return }
+        if let old = old, old.websiteToken == configuration.websiteToken, old.baseURL == configuration.baseURL { return }
+        WidgetConfigFetcher.fetchIcon(configuration: configuration) { [weak self] image in
+            guard let image = image else { return }
+            DispatchQueue.main.async {
+                guard let self = self, self.customIcon == nil else { return }
+                self.iconImageView.image = image
+            }
+        }
+    }
+    
+    /// Clears this launcher's conversation: the live token, held message attributes, and the user and token from its configuration
+    /// (until `initialize(with:)` gets new ones). Also resets the stored token and a widget presented from here. Call it on logout.
+    public func reset() {
+        guard let configuration = configuration else { return }
+        pendingMessageAttributes = [:]
+        liveConversationToken = nil
+        self.configuration = configuration.replacingConversationToken(nil).replacingUser(nil)
+        LimechatWidgetView.reset(instanceId: configuration.instanceId)
+        LimechatWidgetViewController.presented(from: findViewController(), for: configuration)?.reset()
     }
     
     /// Update unread count
@@ -163,93 +171,37 @@ public class LimechatWidgetIcon: UIView {
             return
         }
         
-        // Find the view controller to present from
         guard let viewController = findViewController() else {
             delegate?.widgetDidReceiveError(WidgetError.configurationError("Cannot find view controller"))
             return
         }
         
-        // Present the widget
-        LimechatWidgetViewController.present(
-            from: viewController,
-            configuration: configuration,
-            delegate: delegate
-        )
-    }
-    
-    // MARK: - Helper Methods
-    
-    private func findViewController() -> UIViewController? {
-        var responder: UIResponder? = self
-        while let nextResponder = responder?.next {
-            if let viewController = nextResponder as? UIViewController {
-                return viewController
-            }
-            responder = nextResponder
+        let widget = LimechatWidgetViewController(configuration: configuration.withLiveToken(liveConversationToken))
+        widget.widgetDelegate = delegate
+        widget.onLiveToken = { [weak self] in self?.liveConversationToken = $0 }
+        widget.onDismissWithHeldAttributes = { [weak self] held in
+            guard let self = self else { return }
+            self.pendingMessageAttributes.merge(held) { current, _ in current }
         }
-        return nil
-    }
-}
-
-// MARK: - Convenience Extensions
-
-public extension UIViewController {
-    
-    /// Add a floating widget icon to the view controller
-    /// - Parameters:
-    ///   - configuration: Widget configuration
-    ///   - delegate: Widget delegate
-    ///   - position: Position of the icon (default: bottom right)
-    ///   - customIcon: Custom icon image (optional)
-    func addWidgetIcon(
-        configuration: WidgetConfiguration,
-        delegate: LimechatWidgetDelegate? = nil,
-        position: WidgetIconPosition = .bottomRight,
-        customIcon: UIImage? = nil
-    ) -> LimechatWidgetIcon {
-        
-        let icon = LimechatWidgetIcon()
-        icon.initialize(with: configuration)
-        icon.delegate = delegate
-        icon.customIcon = customIcon
-        
-        view.addSubview(icon)
-        
-        icon.translatesAutoresizingMaskIntoConstraints = false
-        
-        switch position {
-        case .bottomRight:
-            NSLayoutConstraint.activate([
-                icon.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
-                icon.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
-                icon.widthAnchor.constraint(equalToConstant: icon.iconSize),
-                icon.heightAnchor.constraint(equalToConstant: icon.iconSize)
-            ])
-        case .bottomLeft:
-            NSLayoutConstraint.activate([
-                icon.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
-                icon.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 20),
-                icon.widthAnchor.constraint(equalToConstant: icon.iconSize),
-                icon.heightAnchor.constraint(equalToConstant: icon.iconSize)
-            ])
-        case .topRight:
-            NSLayoutConstraint.activate([
-                icon.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
-                icon.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
-                icon.widthAnchor.constraint(equalToConstant: icon.iconSize),
-                icon.heightAnchor.constraint(equalToConstant: icon.iconSize)
-            ])
-        case .topLeft:
-            NSLayoutConstraint.activate([
-                icon.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
-                icon.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 20),
-                icon.widthAnchor.constraint(equalToConstant: icon.iconSize),
-                icon.heightAnchor.constraint(equalToConstant: icon.iconSize)
-            ])
+        if !pendingMessageAttributes.isEmpty {
+            widget.setMessageAttributes(pendingMessageAttributes)
+            pendingMessageAttributes = [:]
         }
-        
-        return icon
+        viewController.present(widget, animated: true)
     }
+    
+    /// Attach custom attributes to the customer's next message. Held until the widget is presented
+    @discardableResult
+    public func setMessageAttributes(_ attributes: [String: Any]) -> Bool {
+        guard !attributes.isEmpty, JSONSerialization.isValidJSONObject(attributes) else { return false }
+        if let configuration = configuration,
+           let presented = LimechatWidgetViewController.presented(from: findViewController(), for: configuration) {
+            return presented.setMessageAttributes(attributes)
+        }
+        pendingMessageAttributes.merge(attributes) { _, new in new }
+        return true
+    }
+    
 }
 
 /// Widget icon position options
@@ -258,4 +210,8 @@ public enum WidgetIconPosition {
     case topRight
     case bottomLeft
     case bottomRight
+}
+
+func unreadBadgeText(_ count: Int) -> String {
+    count > 99 ? "99+" : "\(count)"
 }

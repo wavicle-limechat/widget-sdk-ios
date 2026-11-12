@@ -8,7 +8,6 @@
 - [SwiftUI Integration](#swiftui-integration)
 - [Customization Options](#customization-options)
 - [API Reference](#api-reference)
-- [Comparison with React Native SDK](#comparison-with-react-native-sdk)
 - [Best Practices](#best-practices)
 
 ## Requirements
@@ -24,7 +23,7 @@
 #### Using Xcode
 
 1. In Xcode, select **File → Add Packages**
-2. Enter the repository URL: `https://github.com/limechat/limechat-ios-sdk.git`
+2. Enter the repository URL: `https://github.com/wavicle-limechat/widget-sdk-ios.git`
 3. Select version rule (e.g., "Up to Next Major Version")
 4. Click **Add Package**
 
@@ -34,21 +33,8 @@ Add the dependency to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/limechat/limechat-ios-sdk.git", from: "1.0.0")
+    .package(url: "https://github.com/wavicle-limechat/widget-sdk-ios.git", from: "0.2.0")
 ]
-```
-
-### CocoaPods
-
-Add to your `Podfile`:
-
-```ruby
-pod 'LimechatWidget', '~> 1.0.0'
-```
-
-Then run:
-```bash
-pod install
 ```
 
 ## Basic Integration
@@ -89,13 +75,13 @@ class ViewController: UIViewController {
             name: "John Doe",
             email: "john.doe@example.com",
             phoneNumber: "+1234567890",
-            identifierHash: nil // Optional for secure identification
+            identifier: nil,     // Optional. Set together with identifierHash
+            identifierHash: nil  // Optional. HMAC-SHA256(hmac_token, identifier) from your server
         )
         
         let configuration = WidgetConfiguration(
             websiteToken: "YOUR_WEBSITE_TOKEN", // e.g., "MEFFACy4xaovJayhLjSt836h"
             locale: "en", // Supported: en, es, fr, de, it, pt
-            colorScheme: .light, // .light, .dark, or .auto
             user: user,
             customAttributes: [
                 "source": "ios_app",
@@ -156,7 +142,6 @@ class MainViewController: UIViewController {
         let configuration = WidgetConfiguration(
             websiteToken: "MEFFACy4xaovJayhLjSt836h",
             locale: "en",
-            colorScheme: .auto, // Follows system theme
             user: user,
             customAttributes: [
                 "source": "ios_app",
@@ -173,38 +158,21 @@ class MainViewController: UIViewController {
         )
     }
 }
-
-// MARK: - LimechatWidgetDelegate
-
-extension MainViewController: LimechatWidgetDelegate {
-    
-    func widgetDidLoad() {
-        print("Widget loaded")
-    }
-    
-    func widgetDidRequestClose() {
-        print("Widget closed")
-    }
-    
-    func widgetDidReceiveError(_ error: WidgetError) {
-        print("Error: \(error)")
-    }
-    
-    func widgetDidReceiveMessage(_ message: [String: Any]) {
-        print("Message: \(message)")
-    }
-}
 ```
+
+Implement `LimechatWidgetDelegate` as in the previous section.
 
 ## SwiftUI Integration
 
 ### SwiftUI View Wrapper
 
+`LimechatWidgetSwiftUIView` wraps the `LimechatWidget` launcher. It has no `open` or `setMessageAttributes`. To open with a message or set attributes, present `LimechatWidgetViewController` as below and call its methods.
+
 ```swift
 import SwiftUI
 import LimechatWidget
 
-struct LimechatWidgetView: UIViewControllerRepresentable {
+struct LimechatWidgetSheet: UIViewControllerRepresentable {
     let configuration: WidgetConfiguration
     @Binding var isPresented: Bool
     var onLoad: (() -> Void)?
@@ -225,9 +193,9 @@ struct LimechatWidgetView: UIViewControllerRepresentable {
     }
     
     class Coordinator: NSObject, LimechatWidgetDelegate {
-        let parent: LimechatWidgetView
+        let parent: LimechatWidgetSheet
         
-        init(_ parent: LimechatWidgetView) {
+        init(_ parent: LimechatWidgetSheet) {
             self.parent = parent
         }
         
@@ -264,7 +232,7 @@ struct ContentView: View {
             .cornerRadius(8)
         }
         .sheet(isPresented: $showWidget) {
-            LimechatWidgetView(
+            LimechatWidgetSheet(
                 configuration: createConfiguration(),
                 isPresented: $showWidget,
                 onLoad: {
@@ -287,7 +255,6 @@ struct ContentView: View {
         return WidgetConfiguration(
             websiteToken: "MEFFACy4xaovJayhLjSt836h",
             locale: "en",
-            colorScheme: .auto,
             user: user
         )
     }
@@ -302,10 +269,13 @@ struct ContentView: View {
 |-----------|------|-------------|----------|
 | `websiteToken` | String | Your Limechat website token | Yes |
 | `locale` | String | Language locale (en, es, fr, de, it, pt) | No (default: "en") |
-| `colorScheme` | ColorScheme | .light, .dark, or .auto | No (default: .light) |
 | `user` | User? | User details object | No |
 | `customAttributes` | [String: Any]? | Custom data to attach | No |
 | `baseURL` | String | Custom base URL | No (default: production) |
+| `conversationToken` | String? | External conversation token, used instead of the stored one | No |
+| `onConversationTokenChange` | ((String) -> Void)? | External token management. When set, the SDK does not persist tokens | No |
+| `instanceId` | String? | Storage key for the managed token (default: "default") | No |
+| `hideFilePicker` | Bool | Hides the attachment button in the widget | No (default: false) |
 
 ### User Object
 
@@ -314,22 +284,19 @@ let user = WidgetConfiguration.User(
     name: "John Doe",           // Optional
     email: "john@example.com",  // Optional
     phoneNumber: "+1234567890",  // Optional
-    identifierHash: "hash123"    // Optional - for secure identification
+    identifier: "user-42",       // Optional - needs identifierHash
+    identifierHash: "hash123",   // Optional - needs identifier
+    customAttributes: ["plan": "pro"] // Optional
 )
 ```
 
-### Color Schemes
+The verified `set-user` event is sent once per page load, at ready, and only when both `identifier` and `identifierHash` are set. `name`, `email`, `phoneNumber` and the user `customAttributes` are passed to the widget on their own and need no hash. They are not verified: `name`, `email` and `phoneNumber` go out as `contact` with every message, and the server updates the contact each time, and can merge into an existing contact with the same email or phone. User custom attributes go with every message the customer types, not onto the contact.
 
-```swift
-// Light theme
-configuration.colorScheme = .light
+### Conversation Tokens
 
-// Dark theme
-configuration.colorScheme = .dark
+By default the SDK stores the conversation token in `UserDefaults` under `instanceId` and loads it on the next `initialize`. To manage it yourself, pass `conversationToken` and `onConversationTokenChange`. The SDK then stores nothing, and `widgetDidChangeConversationToken(_:)` on the delegate also reports each new token. A re-`initialize` reads the token again from the configuration or the store, so pass a new configuration when the user changes.
 
-// Follow system theme (iOS 13+)
-configuration.colorScheme = .auto
-```
+**Logout and multiple users.** The stored conversation token is not tied to the user. With no `instanceId` it is saved under the key `"default"`, shared across website tokens. If user A logs out and user B logs in on the same device, B sees A's history and B's user details update A's contact. `reset()` clears this widget's conversation, like the web SDK's `reset()`: it drops the stored or live conversation token and the user (and a token or user you passed in, until you pass new ones), drops held message attributes and a held open message, and reloads the page without a conversation if it is showing. It does not close the widget. Call it on logout. `LimechatWidgetView.reset(instanceId:)` clears the stored token for an instance (nil or blank means `"default"`) without a view, and does not reload a view that is showing. `LimechatWidgetViewController` has `reset()` too. You can also pass a distinct `instanceId` per logged-in user (and per website token if the app uses more than one inbox), or manage the token yourself with `conversationToken` and `onConversationTokenChange`. In one process, `initialize` with a different user (`identifier`, `email` or `phoneNumber`) on the same `instanceId`, or with no user after a user, also drops the stored token. Going from no user to a user, or the same user with a new name, keeps it. A token you pass in the configuration still wins. This is kept in memory only, so it does not cover an app restart: call `reset()` on logout.
 
 ### Custom Attributes
 
@@ -346,11 +313,23 @@ let customAttributes: [String: Any] = [
 
 ### LimechatWidgetView Methods
 
-#### `initialize(with configuration: WidgetConfiguration)`
-Initialize the widget with configuration.
+#### `initialize(with configuration: WidgetConfiguration, initialMessage: String? = nil, initialMessageData: [String: Any]? = nil)`
+Initialize the widget with configuration. `initialMessage` or `initialMessageData` (`["content": ..., "submitted_values": ...]`) opens the widget with that message.
+
+#### `open(message: String)` / `open(messageData: [String: Any])`
+Open the widget with a message. Sent now if the widget is ready, otherwise held and sent at ready. A ready widget is never reloaded. It reloads only when the last load failed, the page was never loaded, or the page finished loading 10 seconds ago and the widget still is not ready. An empty value or a call before `initialize` does nothing. A message object with no `content` and other keys, such as `submitted_values`, gets `content: "Hi"`, like the web SDK's `setOpenMessage` (also for `initialMessageData`). See [Open With a Message](README.md#open-with-a-message).
+
+#### `setMessageAttributes(_ attributes: [String: Any]) -> Bool`
+Attach custom attributes to the customer's next message. Returns `false` for an empty or non-JSON value. File attachments and email-only submits do not use up held attributes. `custom_attributes` set explicitly on the message payload win over held ones. See [Message Attributes](README.md#message-attributes). Needs a widget build containing `c8126fb7cd`.
+
+#### `reset()` / `LimechatWidgetView.reset(instanceId:)`
+`reset()` clears this widget's conversation, like the web SDK's `reset()`: it drops the stored or live conversation token and the user (and a token or user you passed in, until you pass new ones), drops held message attributes and a held open message, and reloads the page without a conversation if it is showing. It does not close the widget. Call it on logout. The static form clears the stored token for the given instance only (nil or blank means `"default"`) and does not reload a view that is showing. The static `reset(instanceId:)` only clears stored state. If a view is showing, call its `reset()` (or the launcher's) instead, or the view keeps its live token and stores it again. Before `initialize`, `reset()` does nothing.
+
+#### `reload()`
+Load the page again. Before `initialize` it does nothing. Held attributes and open messages stay, sent attributes are lost with the page.
 
 #### `sendMessage(event: String, data: [String: Any])`
-Send custom messages to the widget.
+Send custom messages to the widget. A message sent before the widget is ready is lost.
 
 ```swift
 widgetView.sendMessage(event: "custom-event", data: [
@@ -359,22 +338,26 @@ widgetView.sendMessage(event: "custom-event", data: [
 ])
 ```
 
-#### `goBack() -> Bool`
-Navigate back in the WebView. Returns true if navigation occurred.
-
-#### `destroy()`
-Clean up resources when done.
-
 ### LimechatWidgetViewController
+
+`LimechatWidgetViewController` also has `sendMessage`, `open(message:)`, `open(messageData:)`, `setMessageAttributes`, `reload()` and `reset()`, same as the view.
 
 #### Static Method
 ```swift
 static func present(
     from viewController: UIViewController,
     configuration: WidgetConfiguration,
-    delegate: LimechatWidgetDelegate? = nil
+    delegate: LimechatWidgetDelegate? = nil,
+    initialMessage: String? = nil,
+    initialMessageData: [String: Any]? = nil,
+    animated: Bool = true,
+    completion: (() -> Void)? = nil
 )
 ```
+
+### Launchers
+
+`addWidgetIcon(configuration:delegate:position:customIcon:)` returns a `LimechatWidgetIcon`. `LimechatWidget(configuration:customButton:delegate:)` is a view you place yourself, with an optional custom button. Both present the widget on tap. `LimechatWidget` also has `open(message:messageData:)`, `setMessageAttributes`, `reset()` and `setUnreadCount(_:)`, and `LimechatWidgetIcon` has `setMessageAttributes`, `reset()` and `setUnreadCount(_:)`. On a launcher, `reset()` clears the live token and held attributes, drops the user and token from its configuration until you pass new ones, resets the stored token, and resets a widget presented from it. Call it on logout, the static `reset(instanceId:)` does not reach a launcher's live token. The badge shows the count you set. Attributes reach the widget on tap or `open`. Attributes not sent yet when the user closes the widget stay held for the next open. Attributes already sent are lost when the widget closes, since each open is a new page. Set them again.
 
 ### LimechatWidgetDelegate
 
@@ -384,106 +367,54 @@ protocol LimechatWidgetDelegate: AnyObject {
     func widgetDidRequestClose()
     func widgetDidReceiveError(_ error: WidgetError)
     func widgetDidReceiveMessage(_ message: [String: Any])
+    func widgetDidReceiveUnreadCount(_ count: Int) // optional
+    func widgetDidChangeConversationToken(_ token: String) // optional
 }
 ```
+
+`widgetDidLoad` fires once per page load, when the widget can receive messages. A failed page gives `widgetDidReceiveError` and no `widgetDidLoad`. A page that returns 200 but never mounts gives neither.
+
+At ready the SDK sends the verified `set-user` event, held attributes, then a held open message. Then `widgetDidChangeConversationToken` and `widgetDidLoad` fire. `widgetDidReceiveError` also reports web process failures: if the web process dies (for example under memory pressure), ready resets and the SDK reloads the page once. Held attributes and a held open message stay and go out at the next ready, attributes first. Attributes already sent are lost with the page. If the process dies again before the page is ready, the SDK does not reload again and `widgetDidReceiveError` gets `Widget web process died again before ready`. The page stays blank after that, so dismiss the widget on this error. `LimechatWidgetViewController` and the launchers have no native close. Only a ready page resets the one-reload allowance. A later `open(message:)` or `reload()` still loads the page.
+
+| callback | fires |
+|---|---|
+| `widgetDidLoad` | once per page load, at ready |
+| `widgetDidReceiveError` | configuration, load, http (400 and above), serialisation and web process errors |
+| `widgetDidRequestClose` | the widget asked to close |
+| `widgetDidReceiveUnreadCount` | the widget reported a new unread count |
+| `widgetDidChangeConversationToken` | the widget reported a conversation token |
+| `widgetDidReceiveMessage` | any other widget event |
 
 ### WidgetError
 
 ```swift
 enum WidgetError: LocalizedError {
     case configurationError(String)
-    case networkError(String)
     case webViewError(String)
-    case javascriptError(String)
-    case unknownError(String)
 }
 ```
 
-## Comparison with React Native SDK
+`networkError` and `unknownError` still exist but are deprecated. The SDK never produces them. They will be removed in the next major release.
 
-### Similarities
+A main frame http error of 400 or more arrives as `webViewError("HTTP error: <status>")`. A launcher that cannot present the widget or deliver a message reports it on the delegate.
 
-Both iOS Native and React Native SDKs share:
-- Same website token configuration
-- User identification parameters
-- Locale support
-- Custom attributes
-- Event callbacks (onLoad, onClose, onError)
-
-### Key Differences
-
-| Feature | React Native SDK | iOS Native SDK |
-|---------|-----------------|----------------|
-| **Integration** | JSX Component | UIViewController/UIView |
-| **Custom Button** | `customButton` prop | Custom UIButton with presentation |
-| **Unread Count** | Built-in with styling | Implement manually |
-| **Configuration** | Props-based | WidgetConfiguration object |
-| **Styling** | Style props | Native iOS UI |
-| **Full Screen** | Modal/Navigation | LimechatWidgetViewController |
-| **Language** | JavaScript/TypeScript | Swift/Objective-C |
-
-### React Native Example
-```jsx
-<LimeChatWidget
-  websiteToken="MEFFACy4xaovJayhLjSt836h"
-  user={user}
-  locale="en"
-  customAttributes={customAttributes}
-  onWidgetLoad={handleWidgetLoad}
-  onWidgetClose={handleWidgetClose}
-  onError={handleError}
-  customButton={<CustomButton />}
-  unreadCountStyle={{ top: -20 }}
-/>
-```
-
-### iOS Native Equivalent
-```swift
-// Configuration
-let config = WidgetConfiguration(
-    websiteToken: "MEFFACy4xaovJayhLjSt836h",
-    locale: "en",
-    user: user,
-    customAttributes: customAttributes
-)
-
-// Present modally
-LimechatWidgetViewController.present(
-    from: self,
-    configuration: config,
-    delegate: self
-)
-
-// Custom button
-@IBAction func customButtonTapped(_ sender: UIButton) {
-    presentWidget()
-}
-```
+All calls must run on the main thread.
 
 ## Best Practices
 
 ### 1. Memory Management
 
-Always clean up when done:
-```swift
-override func viewWillDisappear(_ animated: Bool) {
-    super.viewWillDisappear(animated)
-    widgetView?.destroy()
-}
-```
+The widget view releases its resources when it is deallocated. Keep a single reference to it and drop that reference when you are done.
 
 ### 2. Error Handling
 
-Implement comprehensive error handling:
 ```swift
 func widgetDidReceiveError(_ error: WidgetError) {
     switch error {
-    case .networkError(let message):
-        showAlert(title: "Network Error", message: message)
     case .configurationError(let message):
         showAlert(title: "Configuration Error", message: message)
-    default:
-        showAlert(title: "Error", message: error.localizedDescription)
+    case .webViewError(let message):
+        showAlert(title: "Widget Error", message: message)
     }
 }
 ```
@@ -492,30 +423,18 @@ func widgetDidReceiveError(_ error: WidgetError) {
 
 For secure user identification:
 ```swift
-// Generate identifier hash on your backend
+// Generate the hash on your backend: HMAC-SHA256(hmac_token, identifier)
 let identifierHash = generateSecureHash(userId: currentUser.id)
 
 let user = WidgetConfiguration.User(
     name: currentUser.name,
     email: currentUser.email,
+    identifier: currentUser.id,
     identifierHash: identifierHash
 )
 ```
 
-### 4. Theme Handling
-
-Respond to theme changes:
-```swift
-override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-    super.traitCollectionDidChange(previousTraitCollection)
-    
-    if traitCollection.userInterfaceStyle != previousTraitCollection?.userInterfaceStyle {
-        // Reinitialize widget with new color scheme if needed
-    }
-}
-```
-
-### 5. Localization
+### 4. Localization
 
 Support multiple languages:
 ```swift
@@ -541,6 +460,12 @@ let configuration = WidgetConfiguration(
 </dict>
 ```
 
+### App Crashes When Picking "Take Photo"
+- Add `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription` to the host app's Info.plist. Without them the app can crash when the user picks "take photo" in the file picker.
+
+### `WidgetConfiguration` Is Ambiguous
+- `WidgetConfiguration` clashes with `SwiftUI.WidgetConfiguration`. In a file that imports both, write `LimechatWidget.WidgetConfiguration`, or build the config in a file that doesn't import SwiftUI.
+
 ### Layout Issues
 - Ensure proper Auto Layout constraints
 - Check safe area handling for devices with notch
@@ -549,17 +474,8 @@ let configuration = WidgetConfiguration(
 - Enable WebView debugging in Safari
 - Check console logs for JavaScript errors
 
-## Sample Project
-
-A complete sample project is available in the `Example` directory:
-
-```bash
-cd limechat-ios-sdk/Example
-open Example.xcodeproj
-```
-
 ## Support
 
-- GitHub Issues: [limechat-ios-sdk/issues](https://github.com/limechat/limechat-ios-sdk/issues)
+- GitHub Issues: [limechat-ios-sdk/issues](https://github.com/wavicle-limechat/widget-sdk-ios/issues)
 - Email: support@limechat.ai
 - Documentation: [docs.limechat.ai](https://docs.limechat.ai)
