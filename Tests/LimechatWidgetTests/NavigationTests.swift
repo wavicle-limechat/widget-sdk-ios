@@ -270,9 +270,11 @@ final class NavigationTests: XCTestCase {
         wait(for: [pageCommitted(server, requests: 1)], timeout: 20)
         XCTAssertEqual(server.requests, 1)
 
-        let kill = NSSelectorFromString("_killWebContentProcess")
-        try XCTSkipUnless(view.testWebView.responds(to: kill), "private kill api missing")
-        _ = view.testWebView.perform(kill)
+        // SIGKILL on the real pid is a crash webkit always reports. `_killWebContentProcess` is a
+        // requested exit, and in a full run webkit sometimes never calls didTerminate for it
+        let pid = (view.testWebView.value(forKey: "_webProcessIdentifier") as? Int32) ?? 0
+        try XCTSkipUnless(pid > 0, "private pid api missing")
+        Darwin.kill(pid, SIGKILL)
         wait(for: [pageCommitted(server, requests: 2)], timeout: 20)
         XCTAssertEqual(spy.calls, [])
         XCTAssertTrue(view.processRecoveryUsed)
