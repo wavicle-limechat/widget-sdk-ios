@@ -228,12 +228,10 @@ final class TokenTests: XCTestCase {
         let view = makeView(WidgetConfiguration(websiteToken: "t", baseURL: base,
                                                 onConversationTokenChange: { _ in }))
         post(setCw("minted"), to: view)
-        let deadline = Date().addingTimeInterval(30)
-        while view.testWebView.isLoading && Date() < deadline {
-            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
-        }
-        XCTAssertFalse(view.testWebView.isLoading)
-        view.open(message: "x") // not loading, so open reloads
+        view.webView(view.testWebView, didFailProvisionalNavigation: nil,
+                     withError: NSError(domain: NSURLErrorDomain, code: NSURLErrorCannotConnectToHost))
+        XCTAssertFalse(view.loadPending) // the last load failed
+        view.open(message: "x") // the last load failed, so open reloads
         XCTAssertTrue(view.testWebView.isLoading)
         XCTAssertEqual(loadedToken(view), "minted")
         XCTAssertEqual(view.pendingOpen as? String, "x")

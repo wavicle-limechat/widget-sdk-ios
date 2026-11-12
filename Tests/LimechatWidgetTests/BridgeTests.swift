@@ -252,6 +252,44 @@ final class BridgeTests: XCTestCase {
         XCTAssertNil(view.pendingOpen)
     }
 
+    private func initializeOffline() {
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", baseURL: "http://localhost:1"))
+        view.webView(view.testWebView, didCommit: nil)
+    }
+
+    func testOpenAfterPageFinishButBeforeReadyHoldsAndSendsAtReady() {
+        initializeOffline()
+        XCTAssertTrue(view.pageStarted)
+        XCTAssertTrue(view.loadPending)
+        view.open(message: "held")
+        XCTAssertTrue(view.pageStarted, "a reload would reset pageStarted")
+        XCTAssertEqual(view.pendingOpen as? String, "held")
+        post(["event": "set-cw-conversation", "data": "tok"])
+        XCTAssertNil(view.pendingOpen)
+        XCTAssertFalse(view.loadPending)
+    }
+
+    func testOpenAfterAMainFrameLoadFailureReloads() {
+        initializeOffline()
+        view.webView(view.testWebView, didFailProvisionalNavigation: nil,
+                     withError: NSError(domain: NSURLErrorDomain, code: NSURLErrorCannotConnectToHost))
+        XCTAssertFalse(view.loadPending)
+        view.open(message: "x")
+        XCTAssertFalse(view.pageStarted, "reloaded")
+        XCTAssertTrue(view.loadPending)
+        XCTAssertEqual(view.pendingOpen as? String, "x")
+    }
+
+    func testOpenAfterAMainFrameHTTPErrorReloads() {
+        initializeOffline()
+        XCTAssertEqual(decide(view, statusCode: 500), .allow)
+        XCTAssertFalse(view.loadPending)
+        view.open(message: "x")
+        XCTAssertFalse(view.pageStarted, "reloaded")
+        XCTAssertTrue(view.loadPending)
+        XCTAssertEqual(view.pendingOpen as? String, "x")
+    }
+
     func testOpenWithSubmittedValuesAndNoContentSendsHi() {
         view.configuration = WidgetConfiguration(websiteToken: "t")
         loadPage(echoPage, into: view, spy: spy)

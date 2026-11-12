@@ -30,6 +30,7 @@ extension LimechatWidgetView: WKNavigationDelegate {
         if navigationResponse.isForMainFrame,
            let response = navigationResponse.response as? HTTPURLResponse,
            response.statusCode >= 400 {
+            loadPending = false
             delegate?.widgetDidReceiveError(.webViewError("HTTP error: \(response.statusCode)"))
         }
         decisionHandler(.allow)
@@ -44,6 +45,7 @@ extension LimechatWidgetView: WKNavigationDelegate {
         pageStarted = false
         widgetReady = false
         if processRecoveryUsed {
+            loadPending = false
             delegate?.widgetDidReceiveError(.webViewError("Widget web process died again before ready"))
             return
         }
@@ -64,6 +66,7 @@ extension LimechatWidgetView: WKNavigationDelegate {
         // a newer load replaced this one, same rule as react-native-webview
         if error.domain == NSURLErrorDomain, error.code == NSURLErrorCancelled { return }
         if error.domain == "WebKitErrorDomain", error.code == 102 { return }
+        loadPending = false
         delegate?.widgetDidReceiveError(.webViewError("Failed to load widget: \(error.localizedDescription)"))
     }
     

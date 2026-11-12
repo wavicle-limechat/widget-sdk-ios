@@ -319,7 +319,7 @@ let customAttributes: [String: Any] = [
 Initialize the widget with configuration. `initialMessage` or `initialMessageData` (`["content": ..., "submitted_values": ...]`) opens the widget with that message.
 
 #### `open(message: String)` / `open(messageData: [String: Any])`
-Open the widget with a message. Sent now if the widget is ready, otherwise held and sent at ready. A ready widget is never reloaded. If no load is running, `open` starts one. An empty value or a call before `initialize` does nothing. A message object with no `content` and other keys, such as `submitted_values`, gets `content: "Hi"`, as in the web SDK (also for `initialMessageData`). See [Open With a Message](README.md#open-with-a-message).
+Open the widget with a message. Sent now if the widget is ready, otherwise held and sent at ready. A ready widget is never reloaded. It reloads only when the last load failed or the page was never loaded. An empty value or a call before `initialize` does nothing. A message object with no `content` and other keys, such as `submitted_values`, gets `content: "Hi"`, as in the web SDK (also for `initialMessageData`). See [Open With a Message](README.md#open-with-a-message).
 
 #### `setMessageAttributes(_ attributes: [String: Any]) -> Bool`
 Attach custom attributes to the customer's next message. Returns `false` for an empty or non-JSON value. File attachments and email-only submits do not use up held attributes. `custom_attributes` set explicitly on the message payload win over held ones. See [Message Attributes](README.md#message-attributes). Needs a widget build containing `c8126fb7cd`.

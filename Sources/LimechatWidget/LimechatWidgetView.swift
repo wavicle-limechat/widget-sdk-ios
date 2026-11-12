@@ -14,6 +14,8 @@ public class LimechatWidgetView: UIView {
     var pageStarted = false
     /// true once the widget posted set-cw-conversation on the current document
     var widgetReady = false
+    /// true from a load start until ready or a main-frame failure. an open message is held while this is set, not reloaded
+    var loadPending = false
     /// one reload is allowed after the web process dies. a ready page resets it
     var processRecoveryUsed = false
     var pendingOpen: Any?
@@ -241,7 +243,7 @@ public class LimechatWidgetView: UIView {
             return
         }
         pendingOpen = message
-        if !webView.isLoading { loadWidget() }
+        if !loadPending { loadWidget() }
     }
     
     func loadWidget() {
@@ -254,6 +256,7 @@ public class LimechatWidgetView: UIView {
         
         pageStarted = false
         widgetReady = false
+        loadPending = true
         webView.load(URLRequest(url: url))
     }
 }
