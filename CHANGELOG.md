@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `LimechatWidget` and `LimechatWidgetIcon` carry the live conversation token into the next open when you use external token management (`onConversationTokenChange`), so a reopen continues the conversation. Without external management the config is unchanged. A new user drops the live token.
 - `LimechatWidgetSwiftUIView` applies a new configuration on update. `LimechatWidget.configuration` is now `public private(set)`. A new user drops held attributes, and the icon is fetched again only when `websiteToken` or `baseURL` changes.
 - `LimechatWidgetSwiftUIView` keeps its delegate alive and passes a new one to the launcher on update. `LimechatWidget.delegate` is weak, so an inline delegate was freed. A delegate set on `LimechatWidget` also reaches a widget that is already presented.
+- The bridge accepts messages from the main frame only. An embedded iframe can no longer post `set-cw-conversation` with a token it picked, or `close-widget`.
 - Embedded iframes can navigate. Only top-frame navigations are checked against the widget host.
 - the swiftui view is now `LimechatWidgetSwiftUIView`. in 0.0.1 it shared the name `LimechatWidgetView` with the uikit view, so the package did not compile. uikit hosts change nothing.
 - main frame http errors (status 400 and above) reach `widgetDidReceiveError`.

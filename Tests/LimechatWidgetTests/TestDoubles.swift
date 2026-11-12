@@ -63,15 +63,18 @@ final class TokenStoreSandbox {
 final class FakeScriptMessage: WKScriptMessage {
     private let fakeName: String
     private let fakeBody: Any
+    private let fakeFrame: FakeFrameInfo
 
-    init(name: String, body: Any) {
+    init(name: String, body: Any, isMainFrame: Bool = true) {
         self.fakeName = name
         self.fakeBody = body
+        self.fakeFrame = FakeFrameInfo(isMainFrame: isMainFrame)
         super.init()
     }
 
     override var name: String { fakeName }
     override var body: Any { fakeBody }
+    override var frameInfo: WKFrameInfo { fakeFrame }
 }
 
 /// WKFrameInfo with a controllable main frame flag.

@@ -55,7 +55,9 @@ extension LimechatWidgetView {
 
 extension LimechatWidgetView: WKScriptMessageHandler {
     public func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard LimechatWidgetView.messageHandlerNames.contains(message.name),
+        // an embedded iframe can post to the bridge too: only the widget page itself is trusted
+        guard message.frameInfo.isMainFrame,
+              LimechatWidgetView.messageHandlerNames.contains(message.name),
               let body = message.body as? [String: Any] else {
             return
         }

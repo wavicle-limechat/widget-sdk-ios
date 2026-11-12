@@ -26,6 +26,37 @@ final class BridgeTests: XCTestCase {
                                    didReceive: FakeScriptMessage(name: name, body: body))
     }
 
+    private func postFromSubframe(_ body: Any) {
+        view.userContentController(view.testWebView.configuration.userContentController,
+                                   didReceive: FakeScriptMessage(name: "limechat", body: body, isMainFrame: false))
+    }
+
+    func testMessagesFromASubframeAreIgnored() {
+        let sandbox = TokenStoreSandbox()
+        defer { sandbox.tearDown() }
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", baseURL: "http://127.0.0.1:9"))
+        view.webView(view.testWebView, didCommit: nil)
+        postFromSubframe(["event": "set-cw-conversation", "cw_conversation": "picked"])
+        postFromSubframe(["event": "close-widget"])
+        postFromSubframe(["event": "unread_count", "count": 3])
+        XCTAssertEqual(spy.calls, [])
+        XCTAssertNil(view.cwConversation)
+        XCTAssertNil(ConversationTokenStore.load(instanceId: "default"))
+        XCTAssertFalse(view.widgetReady)
+    }
+
+    func testMessagesFromTheMainFrameStillWork() {
+        let sandbox = TokenStoreSandbox()
+        defer { sandbox.tearDown() }
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", baseURL: "http://127.0.0.1:9"))
+        view.webView(view.testWebView, didCommit: nil)
+        post(["event": "set-cw-conversation", "cw_conversation": "real"])
+        post(["event": "close-widget"])
+        XCTAssertEqual(spy.calls, [.token("real"), .didLoad, .requestClose])
+        XCTAssertEqual(view.cwConversation, "real")
+        XCTAssertEqual(ConversationTokenStore.load(instanceId: "default"), "real")
+    }
+
     // MARK: handler parsing (direct)
 
     func testCloseEventRequestsClose() {
