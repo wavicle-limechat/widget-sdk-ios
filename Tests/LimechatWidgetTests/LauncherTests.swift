@@ -86,6 +86,40 @@ final class LauncherTests: XCTestCase {
         XCTAssertEqual(spy.calls, [.error("Configuration Error: Cannot find view controller")])
     }
 
+    // MARK: held attributes and user switch
+
+    func testHeldAttributesAreDroppedWhenTheUserSwitches() {
+        let icon = LimechatWidgetIcon()
+        icon.initialize(with: WidgetConfiguration(websiteToken: "tok", user: .init(identifier: "a")))
+        icon.setMessageAttributes(["k": 1])
+        icon.initialize(with: WidgetConfiguration(websiteToken: "tok", user: .init(identifier: "b")))
+        XCTAssertTrue(icon.pendingMessageAttributes.isEmpty)
+    }
+
+    func testHeldAttributesAreDroppedWhenTheTokenChanges() {
+        let icon = LimechatWidgetIcon()
+        icon.initialize(with: WidgetConfiguration(websiteToken: "tok", conversationToken: "x"))
+        icon.setMessageAttributes(["k": 1])
+        icon.initialize(with: WidgetConfiguration(websiteToken: "tok", conversationToken: "y"))
+        XCTAssertTrue(icon.pendingMessageAttributes.isEmpty)
+    }
+
+    func testHeldAttributesAreDroppedOnLogout() {
+        let icon = LimechatWidgetIcon()
+        icon.initialize(with: WidgetConfiguration(websiteToken: "tok", user: .init(email: "a@x.com")))
+        icon.setMessageAttributes(["k": 1])
+        icon.initialize(with: WidgetConfiguration(websiteToken: "tok"))
+        XCTAssertTrue(icon.pendingMessageAttributes.isEmpty)
+    }
+
+    func testHeldAttributesSurviveReopenAsTheSameUser() {
+        let icon = LimechatWidgetIcon()
+        icon.initialize(with: WidgetConfiguration(websiteToken: "tok", user: .init(name: "A", identifier: "a")))
+        icon.setMessageAttributes(["k": 1])
+        icon.initialize(with: WidgetConfiguration(websiteToken: "tok", user: .init(name: "A2", identifier: "a")))
+        XCTAssertEqual(icon.pendingMessageAttributes as NSDictionary, ["k": 1])
+    }
+
     // MARK: addWidgetIcon
 
     private func constraints(of icon: UIView, in vc: UIViewController) -> [NSLayoutConstraint] {

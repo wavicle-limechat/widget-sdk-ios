@@ -51,6 +51,11 @@ public struct WidgetConfiguration {
     }
     
     /// User information structure
+    /// Who the host says the user is: identifier, email, phone and the external token. Name and attributes are not identity
+    var userIdentity: [String?] {
+        [user?.identifier, user?.email, user?.phoneNumber, conversationToken]
+    }
+
     public struct User: Codable {
         public let name: String?
         public let email: String?
