@@ -41,6 +41,10 @@ extension LimechatWidgetView: WKNavigationDelegate {
         widgetReady = false
     }
     
+    public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        pageFinishedAt = now()
+    }
+    
     public func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         pageStarted = false
         widgetReady = false

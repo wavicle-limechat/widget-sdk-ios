@@ -269,6 +269,40 @@ final class BridgeTests: XCTestCase {
         XCTAssertFalse(view.loadPending)
     }
 
+    func testOpenTenSecondsAfterPageFinishWithoutReadyReloads() {
+        var clock: TimeInterval = 100
+        view.now = { clock }
+        initializeOffline()
+        view.webView(view.testWebView, didFinish: nil)
+        clock += 10
+        view.open(message: "x")
+        XCTAssertFalse(view.pageStarted, "reloaded")
+        XCTAssertNil(view.pageFinishedAt)
+        XCTAssertTrue(view.loadPending)
+        XCTAssertEqual(view.pendingOpen as? String, "x")
+    }
+
+    func testOpenFiveSecondsAfterPageFinishWithoutReadyHolds() {
+        var clock: TimeInterval = 100
+        view.now = { clock }
+        initializeOffline()
+        view.webView(view.testWebView, didFinish: nil)
+        clock += 5
+        view.open(message: "x")
+        XCTAssertTrue(view.pageStarted, "a reload would reset pageStarted")
+        XCTAssertEqual(view.pendingOpen as? String, "x")
+    }
+
+    func testOpenWhileStillLoadingHoldsHoweverLongItTakes() {
+        var clock: TimeInterval = 100
+        view.now = { clock }
+        initializeOffline()
+        clock += 60
+        view.open(message: "x")
+        XCTAssertTrue(view.pageStarted, "a reload would reset pageStarted")
+        XCTAssertEqual(view.pendingOpen as? String, "x")
+    }
+
     func testOpenAfterAMainFrameLoadFailureReloads() {
         initializeOffline()
         view.webView(view.testWebView, didFailProvisionalNavigation: nil,

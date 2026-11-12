@@ -18,6 +18,11 @@ public class LimechatWidgetView: UIView {
     var loadPending = false
     /// one reload is allowed after the web process dies. a ready page resets it
     var processRecoveryUsed = false
+    /// when the main frame of the current load finished, on `now`. a pending load that finished this long ago without ready is stuck
+    var pageFinishedAt: TimeInterval?
+    /// monotonic seconds, replaced in tests
+    var now: () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
+    static let stuckLoadTimeout: TimeInterval = 10
     var pendingOpen: Any?
     var pendingMessageAttributes: [String: Any] = [:]
     
@@ -244,6 +249,10 @@ public class LimechatWidgetView: UIView {
             return
         }
         pendingOpen = message
+        // the page finished but the widget never became ready: stop holding and reload
+        if loadPending, let finished = pageFinishedAt, now() - finished >= LimechatWidgetView.stuckLoadTimeout {
+            loadPending = false
+        }
         if !loadPending { loadWidget() }
     }
     
@@ -257,6 +266,7 @@ public class LimechatWidgetView: UIView {
         
         pageStarted = false
         widgetReady = false
+        pageFinishedAt = nil
         loadPending = true
         webView.load(URLRequest(url: url))
     }

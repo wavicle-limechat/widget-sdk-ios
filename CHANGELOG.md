@@ -43,7 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - the launcher icon uses `widgetIconMobile` from `widget_config`, falling back to the default icon on any failure.
 
 ### Fixed
-- `open` before the widget is ready holds the message until ready, and reloads only after a failed load, the same as Android and React Native.
+- `open` before the widget is ready holds the message until ready, and reloads only after a failed load or a page that never became ready (see below), the same as Android and React Native.
+- If the page loads but the widget never becomes ready, `open` reloads after 10 seconds instead of holding forever.
 - `initialize` drops the stored conversation token when the user (`identifier`, `email`, `phoneNumber`) changes or is removed on the same `instanceId`, so a new user does not see the previous user's conversation. No user to a user, and the same user with a new name, keep it. A token passed in the configuration still wins. Memory only: call `reset()` on logout.
 - `LimechatWidget` and `LimechatWidgetIcon` carry the live conversation token into the next open when you use external token management (`onConversationTokenChange`), so a reopen continues the conversation. Without external management the config is unchanged. A new user drops the live token.
 - `LimechatWidgetSwiftUIView` applies a new configuration on update. `LimechatWidget.configuration` is now `public private(set)`. A new user drops held attributes, and the icon is fetched again only when `websiteToken` or `baseURL` changes.

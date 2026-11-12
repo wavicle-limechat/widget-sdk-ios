@@ -132,7 +132,7 @@ launcher.open(message: "Hi")
 ```
 
 - if the widget is ready, the message is sent now. A ready widget is never reloaded.
-- if it is not ready, the message is held and sent at ready. It reloads only when the last load failed or the page was never loaded, so it also retries after a failed load.
+- if it is not ready, the message is held and sent at ready. It reloads only when the last load failed, the page was never loaded, or the page finished loading 10 seconds ago and the widget still is not ready, so it also retries after a failed load.
 - an empty message does nothing. `open` before `initialize` does nothing.
 - A message object with no `content` and other keys, such as `submitted_values`, gets `content: "Hi"`, as in the web SDK. This applies to `open(messageData:)` and `initialMessageData`. `{}` and a lone `{content: ""}` are unchanged. Strings are unchanged.
 - only the latest held message is kept. A held message can go out at a much later load. To drop it, call `initialize(with:)` again or close the widget.

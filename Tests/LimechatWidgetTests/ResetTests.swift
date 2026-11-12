@@ -136,8 +136,12 @@ final class ResetTests: XCTestCase {
     /// the page records every window message, so the test can see what the sdk sent
     private let recorder = "<script>window.__msgs=[];window.addEventListener('message',function(e){window.__msgs.push(String(e.data))})</script>"
 
+    /// window messages are delivered async, so give them a moment before reading
     private func sentMessages(_ view: LimechatWidgetView) -> String {
-        (evalJS("window.__msgs.join('|')", in: view.testWebView) as? String) ?? ""
+        let settle = expectation(description: "settle")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { settle.fulfill() }
+        wait(for: [settle], timeout: 5)
+        return (evalJS("window.__msgs.join('|')", in: view.testWebView) as? String) ?? ""
     }
 
     func testResetDropsTheUserScriptAndSendsNoSetUserOnTheReloadedPage() {
