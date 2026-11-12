@@ -19,7 +19,7 @@ echo "🚀 Preparing release for version $VERSION..."
 # Check if we're on main branch
 CURRENT_BRANCH=$(git branch --show-current)
 if [ "$CURRENT_BRANCH" != "main" ]; then
-    echo "❌ Error: You must be on the main branch to release"
+    echo "❌ Error: You must be on the main branch to release. Merge your changes to main first, then run this from main."
     exit 1
 fi
 
@@ -35,15 +35,30 @@ if git tag -l | grep -q "^$TAG$"; then
     exit 1
 fi
 
-echo "📦 Building package..."
-swift build
+# The package is iOS-only (UIKit), so swift build/test on macOS fails. Use xcodebuild on a simulator.
+# Override with DESTINATION, e.g. DESTINATION='platform=iOS Simulator,name=iPhone 16'
+if [ -z "$DESTINATION" ]; then
+    SIM_ID=$(xcrun simctl list devices available | grep -E "iPhone" | grep -E "Booted" | head -1 | grep -oE "[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}" || true)
+    if [ -z "$SIM_ID" ]; then
+        SIM_ID=$(xcrun simctl list devices available | grep -E "iPhone" | head -1 | grep -oE "[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}" || true)
+    fi
+    if [ -z "$SIM_ID" ]; then
+        echo "❌ Error: no available iPhone simulator found. Set DESTINATION and retry."
+        exit 1
+    fi
+    DESTINATION="platform=iOS Simulator,id=$SIM_ID"
+fi
 
-echo "🧪 Running tests..."
-swift test
+echo "🧪 Running tests on $DESTINATION..."
+xcodebuild test -scheme LimechatWidget -destination "$DESTINATION"
 
 echo "📝 Updating CHANGELOG.md..."
-# Add a placeholder for the release date
-sed -i '' "s/## \[$VERSION\] - Unreleased/## [$VERSION] - $(date +%Y-%m-%d)/" CHANGELOG.md
+# The header is "## [x.y.z]" with no date until release. Stamp today's date.
+if ! grep -q "^## \[$VERSION\]$" CHANGELOG.md; then
+    echo "❌ Error: CHANGELOG.md has no '## [$VERSION]' header without a date. Add or fix it and retry."
+    exit 1
+fi
+sed -i '' "s/^## \[$VERSION\]$/## [$VERSION] - $(date +%Y-%m-%d)/" CHANGELOG.md
 
 echo "🔖 Creating git tag..."
 git add CHANGELOG.md
