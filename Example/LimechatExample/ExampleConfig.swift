@@ -4,8 +4,8 @@ import LimechatWidget
 
 /// Placeholder values. Put your own website token here (see Example/README.md).
 enum ExampleConfig {
-    static let websiteToken = "YOUR_WEBSITE_TOKEN"
-    static let baseURL = "https://app.limechat.ai"
+    static let websiteToken = "teDQSHiBCmtLRiMpwRQmqTT1"
+    static let baseURL = "http://localhost:3000"
     static let instanceId = "limechat-example"
 
     static func configuration(identified: Bool) -> WidgetConfiguration {
