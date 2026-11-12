@@ -389,7 +389,7 @@ enum WidgetError: LocalizedError {
 }
 ```
 
-`networkError` and `unknownError` still exist but are deprecated. The SDK never produces them.
+`networkError` and `unknownError` still exist but are deprecated. The SDK never produces them. They will be removed in the next major release.
 
 A main frame http error of 400 or more arrives as `webViewError("HTTP error: <status>")`. A launcher that cannot present the widget or deliver a message reports it on the delegate.
 

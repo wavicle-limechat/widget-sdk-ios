@@ -3,10 +3,10 @@ import Foundation
 /// Error types that can occur in the widget
 public enum WidgetError: LocalizedError {
     case configurationError(String)
-    @available(*, deprecated, message: "never produced by the sdk; will be removed in 1.0")
+    @available(*, deprecated, message: "never produced by the sdk. will be removed in the next major release.")
     case networkError(String)
     case webViewError(String)
-    @available(*, deprecated, message: "never produced by the sdk; will be removed in 1.0")
+    @available(*, deprecated, message: "never produced by the sdk. will be removed in the next major release.")
     case unknownError(String)
     
     public var errorDescription: String? {
@@ -23,7 +23,7 @@ public enum WidgetError: LocalizedError {
     }
     
     /// Create error from URLError
-    @available(*, deprecated, message: "never produced by the sdk; will be removed in 1.0")
+    @available(*, deprecated, message: "never produced by the sdk. will be removed in the next major release.")
     public static func from(_ urlError: URLError) -> WidgetError {
         switch urlError.code {
         case .timedOut:

@@ -43,8 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - held attributes stay held when the send cannot be serialised.
 
 ### Deprecated
-- `LimechatWidget.containerStyle` is unused and is removed at the next major.
-- `WidgetError.networkError`, `WidgetError.unknownError` and `WidgetError.from(_:)` are never produced by the sdk, removed at the next major.
+- `LimechatWidget.containerStyle` is unused and will be removed in the next major release.
+- `WidgetError.networkError`, `WidgetError.unknownError` and `WidgetError.from(_:)` are never produced by the sdk and will be removed in the next major release.
 
 ## [0.0.1] - 2025-08-20
 
