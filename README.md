@@ -246,6 +246,10 @@ extension YourViewController: LimechatWidgetDelegate {
 
 The floating icon badge is driven by your own count: keep the icon returned by `addWidgetIcon` and call `widgetIcon?.setUnreadCount(count)`.
 
+## Example App
+
+A minimal app that builds against the local package is in [Example/](Example/README.md).
+
 ## Troubleshooting
 
 - Hosts need `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription` in Info.plist, otherwise the app can crash when the user picks "take photo" in the file picker.
