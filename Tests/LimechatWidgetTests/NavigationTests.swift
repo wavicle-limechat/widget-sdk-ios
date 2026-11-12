@@ -55,6 +55,19 @@ final class NavigationTests: XCTestCase {
         XCTAssertEqual(decide(view, url: URL(string: "https://staging.limechat.ai/widget")), .cancel)
     }
 
+    func testSubframeNavigationToAnotherOriginIsAllowed() {
+        let frame = FakeFrameInfo(isMainFrame: false)
+        XCTAssertEqual(decide(view, url: URL(string: "https://www.youtube.com/embed/x"), targetFrame: frame), .allow)
+        XCTAssertEqual(decide(view, url: URL(string: "https://evil.com/x"), targetFrame: FakeFrameInfo(isMainFrame: true)), .cancel)
+    }
+
+    func testSubframeLinkIsNotOpenedExternally() {
+        // a cancelled link would call UIApplication.shared.open and crash the runner, so allow proves it is skipped
+        let frame = FakeFrameInfo(isMainFrame: false)
+        XCTAssertEqual(decide(view, url: URL(string: "https://example.com/doc"), type: .linkActivated, targetFrame: frame), .allow)
+        XCTAssertEqual(spy.calls, [])
+    }
+
     func testSchemeAndHostMatchIsCaseInsensitive() {
         XCTAssertEqual(decide(view, url: URL(string: "HTTPS://APP.LIMECHAT.AI/widget")), .allow)
         XCTAssertEqual(decide(view, url: URL(string: "https://App.LimeChat.ai:443/widget")), .allow)

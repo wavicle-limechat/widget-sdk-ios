@@ -72,22 +72,37 @@ final class FakeScriptMessage: WKScriptMessage {
     override var body: Any { fakeBody }
 }
 
-/// WKNavigationAction with a controllable request/type.
+/// WKFrameInfo with a controllable main frame flag.
+final class FakeFrameInfo: WKFrameInfo {
+    private let fakeMainFrame: Bool
+
+    init(isMainFrame: Bool) {
+        self.fakeMainFrame = isMainFrame
+        super.init()
+        _ = Unmanaged.passRetained(self) // WKFrameInfo.dealloc crashes on a fake, so it is never freed
+    }
+
+    override var isMainFrame: Bool { fakeMainFrame }
+}
+
+/// WKNavigationAction with a controllable request/type/target frame.
 final class FakeNavigationAction: WKNavigationAction {
     private let fakeRequest: URLRequest
     private let fakeType: WKNavigationType
+    private let fakeTargetFrame: WKFrameInfo?
 
-    init(url: URL?, type: WKNavigationType = .other) {
+    init(url: URL?, type: WKNavigationType = .other, targetFrame: WKFrameInfo? = nil) {
         var request = URLRequest(url: URL(string: "https://placeholder.invalid")!)
         request.url = url
         self.fakeRequest = request
         self.fakeType = type
+        self.fakeTargetFrame = targetFrame
         super.init()
     }
 
     override var request: URLRequest { fakeRequest }
     override var navigationType: WKNavigationType { fakeType }
-    override var targetFrame: WKFrameInfo? { nil }
+    override var targetFrame: WKFrameInfo? { fakeTargetFrame }
 }
 
 /// WKNavigationResponse with a controllable response/main frame flag.
@@ -121,9 +136,10 @@ extension UIView {
 
 extension XCTestCase {
     /// Runs decidePolicyFor on the view and returns the synchronous decision.
-    func decide(_ view: LimechatWidgetView, url: URL?, type: WKNavigationType = .other) -> WKNavigationActionPolicy? {
+    func decide(_ view: LimechatWidgetView, url: URL?, type: WKNavigationType = .other,
+                targetFrame: WKFrameInfo? = nil) -> WKNavigationActionPolicy? {
         var decision: WKNavigationActionPolicy?
-        view.webView(view.testWebView, decidePolicyFor: FakeNavigationAction(url: url, type: type)) { decision = $0 }
+        view.webView(view.testWebView, decidePolicyFor: FakeNavigationAction(url: url, type: type, targetFrame: targetFrame)) { decision = $0 }
         return decision
     }
 

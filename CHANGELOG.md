@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - the launcher icon uses `widgetIconMobile` from `widget_config`, falling back to the default icon on any failure.
 
 ### Fixed
+- Embedded iframes can navigate. Only top-frame navigations are checked against the widget host.
 - the swiftui view is now `LimechatWidgetSwiftUIView`. in 0.0.1 it shared the name `LimechatWidgetView` with the uikit view, so the package did not compile. uikit hosts change nothing.
 - main frame http errors (status 400 and above) reach `widgetDidReceiveError`.
 - when the web content process dies, ready resets and the page reloads once with the live token. A second death before ready does not reload and reports `Widget web process died again before ready` through `widgetDidReceiveError`. The page stays blank then, so dismiss the widget on that error. Only a ready page resets the allowance.

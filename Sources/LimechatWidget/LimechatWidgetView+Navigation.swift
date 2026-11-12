@@ -73,6 +73,11 @@ extension LimechatWidgetView: WKNavigationDelegate {
             return
         }
         
+        if navigationAction.targetFrame?.isMainFrame == false {
+            decisionHandler(.allow)
+            return
+        }
+        
         if isWidgetHostURL(url) {
             decisionHandler(.allow)
         } else {
