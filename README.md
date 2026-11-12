@@ -91,6 +91,7 @@ let configuration = WidgetConfiguration(
     locale: "en",                        // Optional, defaults to "en"
     user: user,                          // Optional
     customAttributes: ["key": "value"],  // Optional
+    instanceId: "user-42",               // Optional, key for the stored token. Use one per logged-in user
     hideFilePicker: false                // Optional, hides the attachment button
 )
 ```
