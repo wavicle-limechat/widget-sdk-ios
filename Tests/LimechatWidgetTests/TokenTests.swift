@@ -35,6 +35,7 @@ final class TokenTests: XCTestCase {
     }
 
     private func post(_ body: Any, to view: LimechatWidgetView, name: String = "limechat") {
+        commitIfNeeded(view)
         view.userContentController(view.testWebView.configuration.userContentController,
                                    didReceive: FakeScriptMessage(name: name, body: body))
     }
@@ -68,7 +69,7 @@ final class TokenTests: XCTestCase {
     func testInternalModeStoresTokenUnderDefaultAndNotifiesDelegateNotMessage() {
         let view = makeView(WidgetConfiguration(websiteToken: "t", baseURL: base))
         post(setCw("jwt-1"), to: view)
-        XCTAssertEqual(spy.calls, [.token("jwt-1")])
+        XCTAssertEqual(spy.calls, [.token("jwt-1"), .didLoad])
         XCTAssertEqual(sandbox.defaults.string(forKey: "default"), "jwt-1")
         XCTAssertEqual(ConversationTokenStore.memoryCache["default"], "jwt-1")
     }
@@ -181,14 +182,14 @@ final class TokenTests: XCTestCase {
         post(setCw("   "), to: view)
         post(setCw(5), to: view)
         post(["event": "set-cw-conversation"], to: view)
-        XCTAssertEqual(spy.calls, [])
+        XCTAssertEqual(spy.calls, [.didLoad], "ready only, no token")
         XCTAssertNil(sandbox.defaults.string(forKey: "default"))
     }
 
     func testSetCwConversationViaTypeOnly() {
         let view = makeView(WidgetConfiguration(websiteToken: "t", baseURL: base))
         post(["type": "set-cw-conversation", "cw_conversation": "t1"], to: view, name: "limechat")
-        XCTAssertEqual(spy.calls, [.token("t1")])
+        XCTAssertEqual(spy.calls, [.token("t1"), .didLoad])
         XCTAssertEqual(sandbox.defaults.string(forKey: "default"), "t1")
     }
 
@@ -207,7 +208,7 @@ final class TokenTests: XCTestCase {
                                                 onConversationTokenChange: { received.append($0) }))
         post(setCw("new"), to: view)
         XCTAssertEqual(received, ["new"])
-        XCTAssertEqual(spy.calls, [.token("new")])
+        XCTAssertEqual(spy.calls, [.token("new"), .didLoad])
         XCTAssertNil(sandbox.defaults.string(forKey: "default"))
         XCTAssertNil(ConversationTokenStore.memoryCache["default"])
         view.reload()
@@ -218,7 +219,6 @@ final class TokenTests: XCTestCase {
         let view = makeView(WidgetConfiguration(websiteToken: "t", baseURL: base,
                                                 onConversationTokenChange: { _ in }))
         XCTAssertNil(loadedToken(view))
-        post(setCw("minted"), to: view)
         view.open(message: "x") // held while the first load runs, no second load
         XCTAssertNil(loadedToken(view))
         XCTAssertEqual(view.pendingOpen as? String, "x")
@@ -228,6 +228,7 @@ final class TokenTests: XCTestCase {
         let view = makeView(WidgetConfiguration(websiteToken: "t", baseURL: base,
                                                 onConversationTokenChange: { _ in }))
         post(setCw("minted"), to: view)
+        view.reload() // a new page, with the live token
         view.webView(view.testWebView, didFailProvisionalNavigation: nil,
                      withError: NSError(domain: NSURLErrorDomain, code: NSURLErrorCannotConnectToHost))
         XCTAssertFalse(view.loadPending) // the last load failed
@@ -276,6 +277,6 @@ final class TokenTests: XCTestCase {
         vc.loadViewIfNeeded()
         let widget = vc.view.allSubviews(of: LimechatWidgetView.self).first!
         post(setCw("via-vc"), to: widget)
-        XCTAssertEqual(spy.calls, [.token("via-vc")])
+        XCTAssertEqual(spy.calls, [.token("via-vc"), .didLoad])
     }
 }

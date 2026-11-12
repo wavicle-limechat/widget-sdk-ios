@@ -31,6 +31,7 @@ final class ResetTests: XCTestCase {
     }
 
     private func post(_ token: String, to view: LimechatWidgetView) {
+        commitIfNeeded(view)
         view.userContentController(view.testWebView.configuration.userContentController,
                                    didReceive: FakeScriptMessage(name: "limechat", body: ["event": "set-cw-conversation", "cw_conversation": token]))
     }
@@ -115,6 +116,20 @@ final class ResetTests: XCTestCase {
         XCTAssertEqual(sandbox.defaults.string(forKey: "default"), "new")
         view.reload()
         XCTAssertEqual(loadedToken(view), "new")
+    }
+
+    func testOldPageTokenAfterResetIsNotSavedOrEmitted() {
+        let spy = SpyDelegate()
+        let view = makeView()
+        view.delegate = spy
+        post("old", to: view)
+        view.reset() // the old page is gone, the new one has not committed
+        XCTAssertFalse(view.pageStarted)
+        view.userContentController(view.testWebView.configuration.userContentController,
+                                   didReceive: FakeScriptMessage(name: "limechat", body: ["event": "set-cw-conversation", "cw_conversation": "stale"]))
+        XCTAssertNil(view.cwConversation)
+        XCTAssertNil(sandbox.defaults.string(forKey: "default"))
+        XCTAssertEqual(spy.calls, [.token("old"), .didLoad], "nothing from the stale page")
     }
 
     func testViewControllerResetForwardsToTheView() {

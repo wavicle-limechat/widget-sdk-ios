@@ -177,3 +177,10 @@ extension XCTestCase {
         return out
     }
 }
+
+extension XCTestCase {
+    /// the widget ignores tokens until the current page committed, so tests that post a token commit first
+    func commitIfNeeded(_ view: LimechatWidgetView) {
+        if !view.pageStarted { view.webView(view.testWebView, didCommit: nil) }
+    }
+}

@@ -22,6 +22,7 @@ final class BridgeTests: XCTestCase {
     }
 
     private func post(_ body: Any, name: String = "limechat") {
+        commitIfNeeded(view)
         view.userContentController(view.testWebView.configuration.userContentController,
                                    didReceive: FakeScriptMessage(name: name, body: body))
     }

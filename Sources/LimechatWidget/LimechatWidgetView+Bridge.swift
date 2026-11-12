@@ -67,6 +67,8 @@ extension LimechatWidgetView: WKScriptMessageHandler {
             case "close-widget":
                 delegate?.widgetDidRequestClose()
             case "set-cw-conversation":
+                // an old page can still post after a reset or reload, before the new one committed
+                guard pageStarted else { return }
                 let firstReady = markWidgetReady()
                 handleConversationTokenUpdate(body["cw_conversation"] as? String)
                 if firstReady { delegate?.widgetDidLoad() }
