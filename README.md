@@ -26,11 +26,9 @@ Or add it to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/wavicle-limechat/widget-sdk-ios.git", exact: "0.2.0-beta.1")
+    .package(url: "https://github.com/wavicle-limechat/widget-sdk-ios.git", from: "0.2.0")
 ]
 ```
-
-Note: spm `from:` skips prereleases, so the beta is pinned with `exact:`. After the final release this moves to `from: "0.2.0"`.
 
 ## Quick Start
 

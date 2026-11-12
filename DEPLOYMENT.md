@@ -11,13 +11,13 @@ This guide explains how to publish the Limechat iOS SDK for public use.
 1. **Ensure all files are committed:**
    ```bash
    git add .
-   git commit -m "Prepare for v0.2.0-beta.1 release"
+   git commit -m "Prepare for v0.2.0 release"
    ```
 
 2. **Create a git tag for the version:**
    ```bash
-   git tag -a v0.2.0-beta.1 -m "Release version 0.2.0-beta.1"
-   git push origin v0.2.0-beta.1
+   git tag -a v0.2.0 -m "Release version 0.2.0"
+   git push origin v0.2.0
    ```
 
 ### 2. Create GitHub Release
@@ -25,8 +25,8 @@ This guide explains how to publish the Limechat iOS SDK for public use.
 1. Go to your GitHub repository
 2. Click on "Releases" in the right sidebar
 3. Click "Create a new release"
-4. Select the tag you just created (`v0.2.0-beta.1`)
-5. Add release title: `Limechat iOS SDK v0.2.0-beta.1`
+4. Select the tag you just created (`v0.2.0`)
+5. Add release title: `Limechat iOS SDK v0.2.0`
 6. Add release description with features and changes
 7. Upload any additional files if needed
 8. Click "Publish release"
@@ -38,16 +38,14 @@ After publishing, users should be able to add your package in Xcode:
 1. **In Xcode:**
    - File → Add Package Dependencies
    - Enter: `https://github.com/wavicle-limechat/widget-sdk-ios.git`
-   - Select version: `0.2.0-beta.1`
+   - Select version: `0.2.0`
 
 2. **Or in Package.swift:**
    ```swift
    dependencies: [
-       .package(url: "https://github.com/wavicle-limechat/widget-sdk-ios.git", exact: "0.2.0-beta.1")
+       .package(url: "https://github.com/wavicle-limechat/widget-sdk-ios.git", from: "0.2.0")
    ]
    ```
-
-   Note: spm `from:` skips prereleases, so the beta is pinned with `exact:`. After the final release this moves to `from: "0.2.0"`.
 
 ## Version Management
 
