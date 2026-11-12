@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.0-beta.1]
 
-> **Upgrade note: unverified contact update.** User details passed to the SDK reach the widget through `rnUser` with no verification. On the customer's first message the server updates the contact, and can merge into an existing contact with the same email or phone. If you use identity validation, pass `identifier` and `identifierHash` so the contact is verified.
+> **Upgrade note: unverified contact update.** User details passed to the SDK reach the widget through `rnUser` with no verification. `name`, `email` and `phoneNumber` go out as `contact` with every message, and the server updates the contact each time, and can merge into an existing contact with the same email or phone. If you use identity validation, pass `identifier` and `identifierHash` so the contact is verified.
+
+### Known issues
+- The stored conversation token is not tied to the user. With no `instanceId` it uses the key `"default"`, shared across website tokens, so a second user on the same device can see the first user's history and update their contact. Pass a distinct `instanceId` per user, or use external token management and drop the token on logout. A public clear api is planned.
 
 ### Changed
 - `LimechatWidgetIcon.initialize(with:)` drops held message attributes when the user (`identifier`, `email`, `phoneNumber`) or `conversationToken` changes, so a new user's first message does not carry the previous user's attributes. Same user keeps them. A token that first arrives (empty or nil to a value) is not a change.
@@ -20,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `sdk_version` is no longer sent in the widget url. `platform=ios` is still sent, and all SDKs now send `platform`.
 - `sendMessage` now posts `chatwoot-widget:` + json, the only form the widget reads. it was a silent no-op before.
 - the widget bridge listens on the `limechat` handler only. `limechatNative`, string bodies, the `close` event alias and `limechat://close` are removed, the widget never sent them.
-- user `name`, `email` and `phoneNumber` are passed through `window.chatwootWebChannel.rnUser` and no longer sit in the widget url. hosts that pass a user now update the contact on the first message.
+- user `name`, `email` and `phoneNumber` are passed through `window.chatwootWebChannel.rnUser` and no longer sit in the widget url. hosts that pass a user now update the contact with every message.
 - a delegate set on `LimechatWidget` after init is passed to the default icon.
 
 ### Added

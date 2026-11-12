@@ -6,7 +6,7 @@ This guide explains how to publish the Limechat iOS SDK for public use.
 
 ### 1. Prepare the Repository
 
-`./scripts/release.sh <version>` (from `main`, clean tree) builds, tests, tags and pushes. The manual steps are:
+`./scripts/release.sh <version>` (from `main`, clean tree, so merge to main first) runs `xcodebuild test -scheme LimechatWidget` on an iOS simulator, stamps today's date on the `## [<version>]` changelog header (it fails if that header is missing), then commits, tags and pushes. It picks the first booted or available iPhone simulator. Set `DESTINATION` to override, for example `DESTINATION='platform=iOS Simulator,name=iPhone 16'`. The manual steps are:
 
 1. **Ensure all files are committed:**
    ```bash

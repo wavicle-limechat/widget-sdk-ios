@@ -108,9 +108,13 @@ let user = WidgetConfiguration.User(
 )
 ```
 
-`name`, `email`, `phoneNumber` and `customAttributes` reach the widget on their own and need no hash. They are not verified. On the customer's first message the server updates the contact, and can merge into an existing contact with the same email or phone. User custom attributes go with every message the customer types, not onto the contact. Pass `identifier` and `identifierHash` together if you use identity validation.
+`name`, `email`, `phoneNumber` and `customAttributes` reach the widget on their own and need no hash. They are not verified. `name`, `email` and `phoneNumber` go out as `contact` with every message, and the server updates the contact each time, and can merge into an existing contact with the same email or phone. User custom attributes go with every message the customer types, not onto the contact. Pass `identifier` and `identifierHash` together if you use identity validation.
 
 The verified `set-user` event is sent once per page load, at ready, and only when both `identifier` and `identifierHash` are set.
+
+### Logout and Multiple Users
+
+**Logout and multiple users.** The stored conversation token is not tied to the user. With no `instanceId` it is saved under the key `"default"`, shared across website tokens. If user A logs out and user B logs in on the same device, B sees A's history and B's user details update A's contact. There is no public clear api yet (planned). Until then, pass a distinct `instanceId` per logged-in user (and per website token if the app uses more than one inbox), or manage the token yourself with `conversationToken` and `onConversationTokenChange` and drop it on logout.
 
 ### Open With a Message
 
@@ -239,6 +243,10 @@ extension YourViewController: LimechatWidgetDelegate {
 `WidgetError` has two cases, `configurationError` and `webViewError`. A main frame http error of 400 or more arrives as `webViewError("HTTP error: <status>")`. If you switch over `WidgetError`, handle both.
 
 The floating icon badge is driven by your own count: keep the icon returned by `addWidgetIcon` and call `widgetIcon?.setUnreadCount(count)`.
+
+## Troubleshooting
+
+- Hosts need `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription` in Info.plist, otherwise the app can crash when the user picks "take photo" in the file picker.
 
 ## Requirements
 

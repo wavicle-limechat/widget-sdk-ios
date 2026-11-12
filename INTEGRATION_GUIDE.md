@@ -292,11 +292,13 @@ let user = WidgetConfiguration.User(
 )
 ```
 
-The verified `set-user` event is sent once per page load, at ready, and only when both `identifier` and `identifierHash` are set. `name`, `email`, `phoneNumber` and the user `customAttributes` are passed to the widget on their own and need no hash. They are not verified: on the customer's first message the server updates the contact, and can merge into an existing contact with the same email or phone. User custom attributes go with every message the customer types, not onto the contact.
+The verified `set-user` event is sent once per page load, at ready, and only when both `identifier` and `identifierHash` are set. `name`, `email`, `phoneNumber` and the user `customAttributes` are passed to the widget on their own and need no hash. They are not verified: `name`, `email` and `phoneNumber` go out as `contact` with every message, and the server updates the contact each time, and can merge into an existing contact with the same email or phone. User custom attributes go with every message the customer types, not onto the contact.
 
 ### Conversation Tokens
 
 By default the SDK stores the conversation token in `UserDefaults` under `instanceId` and loads it on the next `initialize`. To manage it yourself, pass `conversationToken` and `onConversationTokenChange`. The SDK then stores nothing, and `widgetDidChangeConversationToken(_:)` on the delegate also reports each new token. A re-`initialize` reads the token again from the configuration or the store, so pass a new configuration when the user changes.
+
+**Logout and multiple users.** The stored conversation token is not tied to the user. With no `instanceId` it is saved under the key `"default"`, shared across website tokens. If user A logs out and user B logs in on the same device, B sees A's history and B's user details update A's contact. There is no public clear api yet (planned). Until then, pass a distinct `instanceId` per logged-in user (and per website token if the app uses more than one inbox), or manage the token yourself with `conversationToken` and `onConversationTokenChange` and drop it on logout.
 
 ### Custom Attributes
 
@@ -456,6 +458,9 @@ let configuration = WidgetConfiguration(
     <true/>
 </dict>
 ```
+
+### App Crashes When Picking "Take Photo"
+- Add `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription` to the host app's Info.plist. Without them the app can crash when the user picks "take photo" in the file picker.
 
 ### Layout Issues
 - Ensure proper Auto Layout constraints
