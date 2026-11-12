@@ -7,6 +7,8 @@ enum ConversationTokenStore {
     static let defaultInstanceId = "default"
     static var defaults: UserDefaults = UserDefaults(suiteName: storageName) ?? .standard
     static var memoryCache: [String: String] = [:]
+    /// The last identity seen per instanceId, in process memory only. See `identity(of:)`
+    static var identities: [String: String] = [:]
 
     static func load(instanceId: String) -> String? {
         if let token = memoryCache[instanceId] { return token }
@@ -24,5 +26,13 @@ enum ConversationTokenStore {
     static func clear(instanceId: String) {
         memoryCache[instanceId] = nil
         defaults.removeObject(forKey: instanceId)
+        identities[instanceId] = nil
+    }
+
+    /// identifier, email and phone number joined with newlines, nil when all three are empty
+    static func identity(of configuration: WidgetConfiguration) -> String? {
+        let user = configuration.user
+        let parts = [user?.identifier ?? "", user?.email ?? "", user?.phoneNumber ?? ""]
+        return parts.allSatisfy { $0.isEmpty } ? nil : parts.joined(separator: "\n")
     }
 }

@@ -110,6 +110,61 @@ final class TokenTests: XCTestCase {
         XCTAssertEqual(loadedToken(makeView(WidgetConfiguration(websiteToken: "t", baseURL: base, instanceId: "b"))), "b-tok")
     }
 
+    // MARK: identity switch
+
+    private func user(_ identifier: String?, email: String? = nil, name: String? = nil) -> WidgetConfiguration {
+        WidgetConfiguration(websiteToken: "t", user: .init(name: name, email: email, identifier: identifier), baseURL: base)
+    }
+
+    func testInitializeWithADifferentUserOnTheSameViewDropsTheStoredToken() {
+        let view = makeView(user("a"))
+        post(setCw("a-tok"), to: view)
+        view.initialize(with: user("b"))
+        XCTAssertNil(loadedToken(view))
+        XCTAssertNil(sandbox.defaults.string(forKey: "default"))
+        XCTAssertNil(ConversationTokenStore.memoryCache["default"])
+    }
+
+    func testANewViewForADifferentUserInTheSameProcessDropsTheStoredToken() {
+        post(setCw("a-tok"), to: makeView(user("a")))
+        let next = makeView(user("b"))
+        XCTAssertNil(loadedToken(next))
+        XCTAssertNil(sandbox.defaults.string(forKey: "default"))
+    }
+
+    func testUserToNoUserDropsTheStoredToken() {
+        post(setCw("a-tok"), to: makeView(user("a")))
+        let next = makeView(WidgetConfiguration(websiteToken: "t", baseURL: base))
+        XCTAssertNil(loadedToken(next))
+        XCTAssertNil(sandbox.defaults.string(forKey: "default"))
+    }
+
+    func testFirstLoginAfterAnonymousKeepsTheToken() {
+        post(setCw("anon-tok"), to: makeView(WidgetConfiguration(websiteToken: "t", baseURL: base)))
+        XCTAssertEqual(loadedToken(makeView(user("a"))), "anon-tok")
+    }
+
+    func testSameIdentityWithANewNameKeepsTheToken() {
+        post(setCw("a-tok"), to: makeView(user("a", name: "A")))
+        XCTAssertEqual(loadedToken(makeView(user("a", name: "A2"))), "a-tok")
+    }
+
+    func testNilAndEmptyIdentityFieldsAreEqual() {
+        post(setCw("a-tok"), to: makeView(WidgetConfiguration(websiteToken: "t", user: .init(email: nil, identifier: "a"), baseURL: base)))
+        let same = makeView(WidgetConfiguration(websiteToken: "t", user: .init(email: "", phoneNumber: "", identifier: "a"), baseURL: base))
+        XCTAssertEqual(loadedToken(same), "a-tok")
+        post(setCw("anon-tok"), to: makeView(WidgetConfiguration(websiteToken: "t", baseURL: base, instanceId: "x")))
+        let empty = makeView(WidgetConfiguration(websiteToken: "t", user: .init(email: "", identifier: ""), baseURL: base, instanceId: "x"))
+        XCTAssertEqual(loadedToken(empty), "anon-tok")
+    }
+
+    func testAnExternalConfigTokenStillWinsAfterASwitch() {
+        post(setCw("a-tok"), to: makeView(user("a")))
+        let config = WidgetConfiguration(websiteToken: "t", user: .init(identifier: "b"), baseURL: base, conversationToken: "ext")
+        XCTAssertEqual(loadedToken(makeView(config)), "ext")
+        XCTAssertNil(sandbox.defaults.string(forKey: "default"))
+    }
+
     func testBlankInstanceIdUsesDefault() {
         post(setCw("x"), to: makeView(WidgetConfiguration(websiteToken: "t", baseURL: base, instanceId: "  ")))
         XCTAssertEqual(sandbox.defaults.string(forKey: "default"), "x")

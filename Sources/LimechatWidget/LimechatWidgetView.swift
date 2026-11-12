@@ -96,6 +96,12 @@ public class LimechatWidgetView: UIView {
         } else {
             instanceId = ConversationTokenStore.defaultInstanceId
         }
+        // another user (or none) on this instance: the stored token is not theirs. anonymous to a user is not a switch
+        let identity = ConversationTokenStore.identity(of: configuration)
+        if let previous = ConversationTokenStore.identities[instanceId], previous != identity {
+            ConversationTokenStore.clear(instanceId: instanceId)
+        }
+        ConversationTokenStore.identities[instanceId] = identity
         if let token = configuration.conversationToken {
             cwConversation = token
         } else {

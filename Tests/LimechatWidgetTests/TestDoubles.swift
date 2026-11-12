@@ -48,12 +48,14 @@ final class TokenStoreSandbox {
         defaults = UserDefaults(suiteName: suiteName)!
         ConversationTokenStore.defaults = defaults
         ConversationTokenStore.memoryCache = [:]
+        ConversationTokenStore.identities = [:]
     }
 
     func tearDown() {
         defaults.removePersistentDomain(forName: suiteName)
         ConversationTokenStore.defaults = originalDefaults
         ConversationTokenStore.memoryCache = [:]
+        ConversationTokenStore.identities = [:]
     }
 }
 
