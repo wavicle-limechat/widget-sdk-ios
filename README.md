@@ -133,6 +133,7 @@ launcher.open(message: "Hi")
 - if the widget is ready, the message is sent now. A ready widget is never reloaded.
 - if it is not ready, the message is held and sent at ready. If no load is running, `open` starts one, so it also retries after a failed load.
 - an empty message does nothing. `open` before `initialize` does nothing.
+- A message object with no `content` and other keys, such as `submitted_values`, gets `content: "Hi"`, as in the web SDK. This applies to `open(messageData:)` and `initialMessageData`. `{}` and a lone `{content: ""}` are unchanged. Strings are unchanged.
 - only the latest held message is kept. A held message can go out at a much later load. To drop it, call `initialize(with:)` again or close the widget.
 - `sendMessage(event:data:)` before ready is lost. Only `open` and `setMessageAttributes` wait.
 - if the widget web process dies (for example under memory pressure), ready resets and the SDK reloads the page once. Held attributes and a held open message stay and go out at the next ready, attributes first. Attributes already sent are lost with the page. If the process dies again before the page is ready, the SDK does not reload again and `widgetDidReceiveError` gets `Widget web process died again before ready`. The page stays blank after that, so dismiss the widget on this error. `LimechatWidgetViewController` and the launchers have no native close. Only a ready page resets the one-reload allowance. A later `open(message:)` or `reload()` still loads the page.

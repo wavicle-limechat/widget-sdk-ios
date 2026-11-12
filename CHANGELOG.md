@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stored conversation token is not tied to the user. With no `instanceId` it uses the key `"default"`, shared across website tokens, so a second user on the same device can see the first user's history and update their contact. Pass a distinct `instanceId` per user, or use external token management and drop the token on logout. A public clear api is planned.
 
 ### Changed
+- `open(messageData:)` and `initialMessageData` with no `content` (missing, null or empty) and at least one other key, such as `submitted_values`, send `content: "Hi"`, as in the web SDK. `{}` and a lone empty `content` are unchanged.
 - `LimechatWidgetIcon.initialize(with:)` drops held message attributes when the user (`identifier`, `email`, `phoneNumber`) or `conversationToken` changes, so a new user's first message does not carry the previous user's attributes. Same user keeps them. A token that first arrives (empty or nil to a value) is not a change.
 - `widgetDidLoad` fires once per page load, when the widget is ready to receive messages, not on page finish. A failed page gives `widgetDidReceiveError` and no `widgetDidLoad`.
 - `open(message:)` and `open(messageData:)` send now when the widget is ready and never reload a ready widget. When it is not ready the message is held and sent at ready, with no message in the url. An empty value does nothing.

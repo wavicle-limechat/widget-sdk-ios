@@ -103,7 +103,8 @@ public class LimechatWidgetView: UIView {
         }
         
         installUserScript()
-        if let data = initialMessageData, !data.isEmpty {
+        if let raw = initialMessageData, !raw.isEmpty {
+            let data = LimechatWidgetView.withDefaultContent(raw)
             if JSONSerialization.isValidJSONObject(data) {
                 pendingOpen = data
             } else {
@@ -154,11 +155,12 @@ public class LimechatWidgetView: UIView {
     /// Open the widget with a `{content, submitted_values}` payload
     public func open(messageData: [String: Any]) {
         guard configuration != nil, !messageData.isEmpty else { return }
-        guard JSONSerialization.isValidJSONObject(messageData) else {
+        let data = LimechatWidgetView.withDefaultContent(messageData)
+        guard JSONSerialization.isValidJSONObject(data) else {
             delegate?.widgetDidReceiveError(.webViewError("Failed to serialize message"))
             return
         }
-        deliverOpen(messageData)
+        deliverOpen(data)
     }
     
     /// Attach custom attributes to the customer's next message. Repeat calls merge, later keys win.
@@ -195,6 +197,16 @@ public class LimechatWidgetView: UIView {
               let json = String(data: data, encoding: .utf8) else { return }
         let source = "window.chatwootWebChannel = window.chatwootWebChannel || {}; window.chatwootWebChannel.rnUser = \(json);"
         controller.addUserScript(WKUserScript(source: source, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+    }
+    
+    /// Like the web sdk: no `content` (missing, null or empty) with other keys gets `content: "Hi"`
+    static func withDefaultContent(_ data: [String: Any]) -> [String: Any] {
+        let content = data["content"]
+        let missing = content == nil || content is NSNull || (content as? String)?.isEmpty == true
+        guard missing, data.keys.contains(where: { $0 != "content" }) else { return data }
+        var copy = data
+        copy["content"] = "Hi"
+        return copy
     }
     
     private func deliverOpen(_ message: Any) {

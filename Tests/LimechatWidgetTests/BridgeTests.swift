@@ -252,6 +252,50 @@ final class BridgeTests: XCTestCase {
         XCTAssertNil(view.pendingOpen)
     }
 
+    func testOpenWithSubmittedValuesAndNoContentSendsHi() {
+        view.configuration = WidgetConfiguration(websiteToken: "t")
+        loadPage(echoPage, into: view, spy: spy)
+        view.open(messageData: ["submitted_values": ["a": 1]])
+        waitForEchoes(1)
+        XCTAssertEqual(openEchoes(), [["event": "open-with-message", "openMessage": ["content": "Hi", "submitted_values": ["a": 1]]]])
+    }
+
+    func testOpenWithEmptyContentAndOtherKeysSendsHi() {
+        view.configuration = WidgetConfiguration(websiteToken: "t")
+        loadPage(echoPage, into: view, spy: spy)
+        view.open(messageData: ["content": "", "submitted_values": ["a": 1]])
+        view.open(messageData: ["content": NSNull(), "k": 1])
+        waitForEchoes(2)
+        XCTAssertEqual(openEchoes(), [["event": "open-with-message", "openMessage": ["content": "Hi", "submitted_values": ["a": 1]]],
+                                      ["event": "open-with-message", "openMessage": ["content": "Hi", "k": 1]]])
+    }
+
+    func testOpenKeepsExistingContent() {
+        view.configuration = WidgetConfiguration(websiteToken: "t")
+        loadPage(echoPage, into: view, spy: spy)
+        view.open(messageData: ["content": "hello", "submitted_values": ["a": 1]])
+        waitForEchoes(1)
+        XCTAssertEqual(openEchoes(), [["event": "open-with-message", "openMessage": ["content": "hello", "submitted_values": ["a": 1]]]])
+    }
+
+    func testOpenWithALoneEmptyContentIsUnchanged() {
+        view.configuration = WidgetConfiguration(websiteToken: "t")
+        loadPage(echoPage, into: view, spy: spy)
+        view.open(messageData: ["content": ""])
+        waitForEchoes(1)
+        XCTAssertEqual(openEchoes(), [["event": "open-with-message", "openMessage": ["content": ""]]])
+    }
+
+    func testInitialMessageDataWithoutContentSendsHiAtReady() {
+        view.initialize(with: WidgetConfiguration(websiteToken: "t", baseURL: "http://localhost:1"),
+                        initialMessageData: ["submitted_values": ["a": 1]])
+        XCTAssertEqual(view.pendingOpen as? NSDictionary, ["content": "Hi", "submitted_values": ["a": 1]])
+        view.configuration = WidgetConfiguration(websiteToken: "t")
+        loadPage(echoPage, into: view, spy: spy)
+        waitForEchoes(1)
+        XCTAssertEqual(openEchoes(), [["event": "open-with-message", "openMessage": ["content": "Hi", "submitted_values": ["a": 1]]]])
+    }
+
     func testHeldMessageIsSentOnceAtReady() {
         view.configuration = WidgetConfiguration(websiteToken: "t")
         view.pendingOpen = "held"
